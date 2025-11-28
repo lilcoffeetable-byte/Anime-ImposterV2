@@ -22,8 +22,9 @@
       box-shadow: 0 12px 30px rgba(0,0,0,0.6);
       overflow-y: auto;
     }
-    h1 { text-align:center; margin:0 0 10px; }
+    h1 { text-align:center; margin:0 0 4px; }
     h3 { margin-top: 0; }
+    #subtitle { text-align:center; font-size:0.8rem; opacity:0.8; margin-bottom:8px; }
     button {
       width: 100%; padding: 10px; border-radius: 12px;
       border: none; margin-top: 10px; font-weight:600;
@@ -32,7 +33,7 @@
       transition: 0.15s;
     }
     button:hover { opacity:.92; transform:translateY(-1px); }
-    .mode-btn {
+    .mode-btn, .playmode-btn, .online-btn {
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.2);
       color: #fff; margin: 6px 0;
@@ -40,7 +41,11 @@
       cursor:pointer;
       transition:0.15s;
     }
-    .mode-btn.selected { background: rgba(255,127,209,0.3); border-color:#ff7fd1; }
+    .mode-btn.selected,
+    .playmode-btn.selected,
+    .online-btn.selected {
+      background: rgba(255,127,209,0.3); border-color:#ff7fd1;
+    }
     input[type="number"], input[type="text"] {
       width: 100%; padding: 8px; border-radius: 8px;
       border: 1px solid rgba(255,255,255,0.2);
@@ -68,6 +73,7 @@
 <body>
 <div class="container">
   <h1>Anime Imposter</h1>
+  <div id="subtitle"></div>
   <div id="screen"></div>
 </div>
 
@@ -530,8 +536,11 @@ function getHint(word, mode) {
    GAME STATE
 ============================ */
 const screen = document.getElementById("screen");
+const subtitle = document.getElementById("subtitle");
 
 const state = {
+  playMode: "",        // "pass" or "online"
+  roomCode: "",        // e.g. "ABQXJ"
   mode: "",
   hintEnabled: false,
   totalPlayers: 0,
@@ -545,6 +554,32 @@ const state = {
 };
 
 /* ============================
+   UTILS
+============================ */
+function updateSubtitle() {
+  let text = "";
+  if (!state.playMode) {
+    text = "Select how you want to play";
+  } else if (state.playMode === "pass") {
+    text = "Mode: Pass-Around (one device)";
+  } else if (state.playMode === "online") {
+    text = state.roomCode
+      ? `Mode: Online · Room ${state.roomCode}`
+      : "Mode: Online (room not set)";
+  }
+  subtitle.textContent = text;
+}
+
+function randomRoomCode(length = 5) {
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no O/I to avoid confusion
+  let out = "";
+  for (let i = 0; i < length; i++) {
+    out += letters[Math.floor(Math.random() * letters.length)];
+  }
+  return out;
+}
+
+/* ============================
    SCOREBOARD
 ============================ */
 function renderScoreboard() {
@@ -552,18 +587,144 @@ function renderScoreboard() {
   const rows = state.players
     .map((p) => `${p.name}: ${p.score}`)
     .join("<br>");
+  const roomLine = (state.playMode === "online" && state.roomCode)
+    ? `<div class="small">Room: ${state.roomCode}</div>`
+    : "";
   return `
     <div class="word-box">
       <strong>Scores</strong><br>
       ${rows}
+      ${roomLine}
     </div>
   `;
 }
 
 /* ============================
-   MODE SELECT
+   PLAY MODE SELECT
+============================ */
+function showPlayModeSelect() {
+  screen.innerHTML = `
+    <h3>Choose Play Style</h3>
+    <button class="playmode-btn" data-mode="pass">
+      Pass-Around (local, one device)
+    </button>
+    <button class="playmode-btn" data-mode="online">
+      Online (room code, host & join)
+    </button>
+    <p class="small">
+      Online mode gives you a room code for playing over voice chat/Discord.
+      The actual game still runs on this device.
+    </p>
+    <button id="continue">Next</button>
+
+    ${renderScoreboard()}
+  `;
+
+  let selected = null;
+
+  document.querySelectorAll(".playmode-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".playmode-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selected = btn.dataset.mode;
+    };
+  });
+
+  document.getElementById("continue").onclick = () => {
+    if (!selected) {
+      alert("Select a play style first.");
+      return;
+    }
+    state.playMode = selected;
+    state.roomCode = "";
+    updateSubtitle();
+
+    if (selected === "online") {
+      showOnlineRoomMenu();
+    } else {
+      showModeSelect();
+    }
+  };
+}
+
+/* ============================
+   ONLINE: HOST / JOIN ROOM
+============================ */
+function showOnlineRoomMenu() {
+  screen.innerHTML = `
+    <h3>Online Mode</h3>
+    <button class="online-btn" id="hostRoom">Host Room</button>
+    <button class="online-btn" id="joinRoom">Join Room</button>
+    <p class="small">
+      Host Room: create a random code and share it with friends.<br>
+      Join Room: type in the code your host gave you.<br>
+      (This version doesn't sync devices; it's for organizing who is in which game while you talk over voice.)
+    </p>
+
+    ${renderScoreboard()}
+  `;
+
+  document.getElementById("hostRoom").onclick = () => {
+    state.roomCode = randomRoomCode();
+    updateSubtitle();
+    screen.innerHTML = `
+      <h3>Room Created</h3>
+      <div class="word-box">
+        Share this code with your friends:<br>
+        <strong style="font-size:1.5rem;">${state.roomCode}</strong>
+      </div>
+      <p class="small center">
+        Everyone joins using this code. You run the game on this device.
+      </p>
+      <button id="start">Continue to Gamemode Select</button>
+
+      ${renderScoreboard()}
+    `;
+    document.getElementById("start").onclick = showModeSelect;
+  };
+
+  document.getElementById("joinRoom").onclick = () => {
+    screen.innerHTML = `
+      <h3>Join Room</h3>
+      <p class="small center">Enter the room code your host gave you.</p>
+      <input id="roomInput" type="text" maxlength="8" placeholder="e.g. ABCDE">
+      <button id="join">Join</button>
+
+      ${renderScoreboard()}
+    `;
+    document.getElementById("join").onclick = () => {
+      const code = (document.getElementById("roomInput").value || "").trim().toUpperCase();
+      if (!code) {
+        alert("Type a room code.");
+        return;
+      }
+      // No real server to verify – just store it locally
+      state.roomCode = code;
+      updateSubtitle();
+      screen.innerHTML = `
+        <h3>Joined Room</h3>
+        <div class="word-box">
+          Room Code:<br>
+          <strong style="font-size:1.5rem;">${state.roomCode}</strong>
+        </div>
+        <p class="small center">
+          Your host runs the round on their device while you all talk.
+          This device will still handle words and roles locally.
+        </p>
+        <button id="start">Continue to Gamemode Select</button>
+
+        ${renderScoreboard()}
+      `;
+      document.getElementById("start").onclick = showModeSelect;
+    };
+  };
+}
+
+/* ============================
+   MODE SELECT (CHAR/TITLE/LOC)
 ============================ */
 function showModeSelect() {
+  updateSubtitle();
   screen.innerHTML = `
     <h3>Select Gamemode</h3>
     <button class="mode-btn" data-mode="characters">Anime Characters</button>
@@ -614,6 +775,7 @@ function showModeSelect() {
    PLAYER COUNT
 ============================ */
 function showPlayerSetup() {
+  updateSubtitle();
   screen.innerHTML = `
     <h3>How many players?</h3>
     <input id="players" type="number" min="3" max="12" value="${state.totalPlayers || 4}">
@@ -638,6 +800,7 @@ function showPlayerSetup() {
    NAME ENTRY
 ============================ */
 function showNameEntry() {
+  updateSubtitle();
   let inputsHtml = "";
   for (let i = 0; i < state.totalPlayers; i++) {
     const existing = state.players[i]?.name || "";
@@ -685,6 +848,7 @@ function showNameEntry() {
    PASS DEVICE
 ============================ */
 function showPassDevice() {
+  updateSubtitle();
   const name = state.players[state.currentPlayer - 1]?.name || `Player ${state.currentPlayer}`;
   screen.innerHTML = `
     <div class="center">
@@ -699,6 +863,7 @@ function showPassDevice() {
    ROLE SCREEN
 ============================ */
 function showRole() {
+  updateSubtitle();
   const idx = state.currentPlayer - 1;
   const playerName = state.players[idx]?.name || `Player ${state.currentPlayer}`;
   const isImposter = state.currentPlayer === state.imposterIndex;
@@ -744,6 +909,7 @@ function showRole() {
    DISCUSSION
 ============================ */
 function showDiscussion() {
+  updateSubtitle();
   screen.innerHTML = `
     <h3>Discussion Phase</h3>
     <p class="center small">
@@ -760,6 +926,7 @@ function showDiscussion() {
    VOTING
 ============================ */
 function showVoting() {
+  updateSubtitle();
   let options = "";
   for (let i = 1; i <= state.totalPlayers; i++) {
     const name = state.players[i-1]?.name || `Player ${i}`;
@@ -787,6 +954,7 @@ function showVoting() {
    VOTE RESULT
 ============================ */
 function resolveVote() {
+  updateSubtitle();
   if (!state.vote) {
     alert("Select someone!");
     return;
@@ -811,7 +979,7 @@ function resolveVote() {
       <p class="center small">You voted ${votedName}, but they were innocent.</p>
       <p class="center small">Real Imposter: ${impName}</p>
       <div class="word-box">Word: ${state.secretWord}</div>
-      <button onclick="showModeSelect()">Play Again</button>
+      <button onclick="showPlayModeSelect()">Play Again</button>
 
       ${renderScoreboard()}
     `;
@@ -822,6 +990,7 @@ function resolveVote() {
    IMPOSTER FINAL GUESS
 ============================ */
 function showImposterGuess() {
+  updateSubtitle();
   const impName = state.players[state.imposterIndex - 1]?.name || `Player ${state.imposterIndex}`;
 
   screen.innerHTML = `
@@ -847,7 +1016,7 @@ function showImposterGuess() {
         <h3>Imposter Wins!</h3>
         <p class="center small">${impName} guessed the word correctly.</p>
         <div class="word-box">${state.secretWord}</div>
-        <button onclick="showModeSelect()">Play Again</button>
+        <button onclick="showPlayModeSelect()">Play Again</button>
 
         ${renderScoreboard()}
       `;
@@ -856,7 +1025,7 @@ function showImposterGuess() {
         <h3>Crew Wins 🎉</h3>
         <p class="center small">The Imposter failed to guess the word.</p>
         <div class="word-box">${state.secretWord}</div>
-        <button onclick="showModeSelect()">Play Again</button>
+        <button onclick="showPlayModeSelect()">Play Again</button>
 
         ${renderScoreboard()}
       `;
@@ -865,7 +1034,7 @@ function showImposterGuess() {
 }
 
 /* Start Game */
-showModeSelect();
+showPlayModeSelect();
 </script>
 
 <script>
