@@ -603,6 +603,7 @@ function renderScoreboard() {
    PLAY MODE SELECT
 ============================ */
 function showPlayModeSelect() {
+  updateSubtitle();
   screen.innerHTML = `
     <h3>Choose Play Style</h3>
     <button class="playmode-btn" data-mode="pass">
@@ -651,6 +652,7 @@ function showPlayModeSelect() {
    ONLINE: HOST / JOIN ROOM
 ============================ */
 function showOnlineRoomMenu() {
+  updateSubtitle();
   screen.innerHTML = `
     <h3>Online Mode</h3>
     <button class="online-btn" id="hostRoom">Host Room</button>
@@ -1033,7 +1035,7 @@ function showImposterGuess() {
   };
 }
 
-/* Start Game */
+/* Start Game – THIS is the important line */
 showPlayModeSelect();
 </script>
 
