@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Anime Imposter</title>
-  <meta name="theme-color" content="#0b0b1a">
-  <link rel="manifest" href="manifest.json">
   <style>
     * { box-sizing: border-box; font-family: system-ui, sans-serif; }
     body {
@@ -15,7 +13,7 @@
       color: #f9f9ff;
     }
     .container {
-      width: 100%; max-width: 500px; max-height: 95vh;
+      width: 100%; max-width: 520px; max-height: 95vh;
       padding: 20px;
       background: rgba(10,10,25,0.9); border-radius: 18px;
       border: 1px solid rgba(255,255,255,0.1);
@@ -33,7 +31,7 @@
       transition: 0.15s;
     }
     button:hover { opacity:.92; transform:translateY(-1px); }
-    .mode-btn, .playmode-btn, .online-btn {
+    .choice-btn {
       background: rgba(255,255,255,0.08);
       border: 1px solid rgba(255,255,255,0.2);
       color: #fff; margin: 6px 0;
@@ -41,9 +39,7 @@
       cursor:pointer;
       transition:0.15s;
     }
-    .mode-btn.selected,
-    .playmode-btn.selected,
-    .online-btn.selected {
+    .choice-btn.selected {
       background: rgba(255,127,209,0.3); border-color:#ff7fd1;
     }
     input[type="number"], input[type="text"] {
@@ -58,7 +54,9 @@
       text-align:center; background:rgba(255,255,255,0.08);
       padding:12px; border-radius:10px; margin-top:10px;
     }
-    .vote-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; }
+    .vote-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px;
+    }
     .vote-btn {
       padding:10px; border-radius:10px; background:rgba(255,255,255,0.1);
       border:1px solid rgba(255,255,255,0.2); cursor:pointer; color:#fff;
@@ -68,6 +66,10 @@
     .center { text-align:center; }
     .small { font-size: 0.85rem; opacity: 0.85; }
     .name-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .pill {
+      display:inline-block; padding:4px 10px; border-radius:999px;
+      background:rgba(255,255,255,0.08); font-size:0.8rem; margin:2px;
+    }
   </style>
 </head>
 <body>
@@ -76,6 +78,26 @@
   <div id="subtitle"></div>
   <div id="screen"></div>
 </div>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore-compat.js"></script>
+
+<script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyBKYZ6dyaQ0ZdVUxEUGmgkXZ-mKPHRUVGI",
+    authDomain: "anime-imposterv2.firebaseapp.com",
+    projectId: "anime-imposterv2",
+    storageBucket: "anime-imposterv2.firebasestorage.app",
+    messagingSenderId: "470263265332",
+    appId: "1:470263265332:web:721a8e65df13ceb85c7261"
+  };
+
+  // Initialize Firebase using the compat SDK
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+</script>
 
 <script>
 /* ============================
@@ -119,459 +141,118 @@ const animeLocations = [
   "Morioh","Dio's Mansion"
 ];
 
-/* ============================
-   CHARACTER HINT POOLS
-============================ */
-const characterHintPools = {
-  naruto: [
-    "blonde","spiky","whiskers","orange","jacket","sandals","scarf","grin","loud","upbeat",
-    "stubborn","ramen","short","bright","messy","leaf","teen","sunny","hyper","bold"
-  ],
-  sasuke: [
-    "black","sleek","pale","dark","robe","collar","calm","cold","quiet","brooding",
-    "sharp","slim","blue","distant","focused","tidy","moody","cool","lone","refined"
-  ],
-  sakura: [
-    "pink","short","gloves","headband","neat","bright","caring","strong","medic","tidy",
-    "serious","brave","focused","polite","clean","skirt","soft","alert","loyal","calm"
-  ],
-  kakashi: [
-    "silver","mask","covered","calm","lean","tall","lone","sleepy","vest","books",
-    "relaxed","scarf","chill","quiet","composed","blue","soft","mature","casual","mellow"
-  ],
-  luffy: [
-    "black","vest","sandals","straw","grin","carefree","loud","hungry","slim","tan",
-    "open","wild","curious","sunny","shirtless","shorts","simple","bold","goofy","cheerful"
-  ],
-  zoro: [
-    "green","bandana","scar","bulky","boots","coat","serious","strict","quiet","strong",
-    "stern","bold","tan","belt","gloves","stubborn","focused","tough","rough","intense"
-  ],
-  nami: [
-    "orange","slim","skirt","bracelets","clever","stylish","witty","sharp","calm","neat",
-    "green","bikini","cute","bright","confident","sandals","tidy","sweet","vibrant","sly"
-  ],
-  goku: [
-    "black","spiky","orange","gi","boots","cheerful","friendly","upbeat","naive","lean",
-    "tall","bright","lively","kind","simple","casual","playful","warm","pure","bold"
-  ],
-  vegeta: [
-    "black","sharp","widow","armor","gloves","boots","proud","intense","angry","short",
-    "compact","royal","tense","strict","stern","blue","serious","elite","grit","tough"
-  ],
-  tanjiro: [
-    "black","red","scar","haori","green","checkered","polite","kind","gentle","soft",
-    "caring","neat","honest","calm","tidy","scarf","bright","humble","pure","warm"
-  ],
-  nezuko: [
-    "black","pink","ribbon","bamboo","quiet","shy","cute","soft","kind","sweet",
-    "long","gentle","pale","small","feminine","calm","demure","warm","silent","delicate"
-  ],
-  inosuke: [
-    "black","messy","boar","wild","loud","chaotic","shirtless","rough","lean","sharp",
-    "reckless","bold","fierce","primal","tough","crazy","fast","raw","brash","gritty"
-  ],
-  gojo: [
-    "white","tall","slim","cool","blindfold","shades","stylish","playful","smug","calm",
-    "soft","scarf","long","sleek","modern","blue","trendy","relaxed","smooth","casual"
-  ],
-  megumi: [
-    "black","spiky","uniform","quiet","reserved","serious","slim","pale","calm","loyal",
-    "neat","tidy","soft","lowkey","focused","polite","cool","steady","muted","plain"
-  ],
-  ichigo: [
-    "orange","tall","black","robe","stubborn","rough","sharp","casual","serious","lean",
-    "pale","coat","bold","loud","tough","scar","gritty","moody","direct","edgy"
-  ],
-  rukia: [
-    "black","cute","small","uniform","serious","strict","calm","neat","pale","short",
-    "tidy","simple","clean","cold","polite","firm","pure","crisp","chill","classic"
-  ],
-  levi: [
-    "black","short","crisp","clean","scarf","boots","cape","neat","stern","harsh",
-    "tidy","compact","sharp","cold","lean","strict","silent","minimal","direct","rigid"
-  ],
-  mikasa: [
-    "black","scarf","calm","loyal","stoic","soft","slim","strong","neat","folded",
-    "simple","quiet","alert","firm","tidy","pale","steady","bold","stable","warm"
-  ],
-  kaneki: [
-    "black","white","mask","bookish","shy","quiet","pale","slim","soft","gentle",
-    "dark","neat","anxious","calm","introvert","simple","hoodie","thin","lonely","muted"
-  ],
-  gon: [
-    "black","green","shorts","boots","curious","upbeat","sunny","pure","bright","cheerful",
-    "slim","loud","playful","loyal","eager","brave","bold","lively","fresh","spirited"
-  ],
-  killua: [
-    "white","blue","shirt","calm","cool","pale","slim","soft","clever","sweet",
-    "quiet","hoodie","smooth","chill","muted","sharp","quick","casual","light","soft"
-  ],
-  hisoka: [
-    "red","suit","makeup","grin","smug","sly","odd","playful","tall","slim",
-    "sharp","jester","flashy","cold","eerie","bright","lean","pride","showy","chaotic"
-  ],
-  light: [
-    "brown","neat","shirt","tie","calm","smart","clean","tidy","polite","slim",
-    "quiet","serious","coat","pale","simple","sharp","smooth","organized","formal","focused"
-  ],
-  l: [
-    "black","messy","jeans","pale","quiet","slouch","sweets","odd","calm","soft",
-    "dark","introvert","blank","loose","bare","sleepy","empty","weird","plain","gentle"
-  ],
-  saitama: [
-    "bald","cape","yellow","plain","calm","simple","blank","straight","easygoing","soft",
-    "casual","smooth","clean","round","neat","warm","mellow","steady","quiet","dull"
-  ],
-  meliodas: [
-    "blonde","short","sword","vest","casual","grin","cheerful","captain","tavern","relaxed",
-    "youthful","broken","dragon","playful","smirk","soft","messy","calm","stubborn","bar"
-  ],
-  elizabeth: [
-    "silver","blue","eyes","skirt","uniform","kind","gentle","princess","polite","soft",
-    "tearful","caring","calm","long","hair","earring","graceful","white","quiet","sweet"
-  ],
-  ban: [
-    "silver","tall","scar","red","jacket","open","grin","cocky","lean","piercing",
-    "shirtless","brash","smirk","boots","bold","rough","immortal","bar","blue","wild"
-  ],
-  diane: [
-    "giant","tall","braid","brown","ponytail","earthy","kind","orange","shorts","boots",
-    "hammer","smile","gentle","strong","cheerful","tank","green","cute","big","playful"
-  ],
-  king: [
-    "short","round","cloak","pillow","hover","float","hoodie","freckles","soft","shy",
-    "wings","green","spear","cape","quiet","childlike","serious","royal","sad","gentle"
-  ],
-  gowther: [
-    "pink","glasses","book","calm","blank","doll","slim","soft","quiet","pale",
-    "sweater","odd","literal","calculated","shirt","short","reserved","gentle","curious","gloves"
-  ],
-  merlin: [
-    "purple","cloak","witch","staff","tall","curvy","mysterious","smirk","boots","high",
-    "sorceress","cool","confident","calm","long","elegant","sleeves","gloves","wise","charm"
-  ],
-  escanor: [
-    "mustache","sun","tall","massive","muscles","bar","apron","glasses","meek","timid",
-    "pride","noon","lion","strong","coat","shirt","gentle","noble","quiet","radiant"
-  ],
-  mob: [
-    "bowlcut","plain","uniform","black","short","slouch","blank","quiet","shy","soft",
-    "psychic","tremble","student","modest","calm","reserved","nervous","gentle","pale","simple"
-  ],
-  reigen: [
-    "blonde","suit","tie","office","salesman","smirk","talkative","fake","mentor","loose",
-    "cunning","charming","sleeves","hands","pose","cheap","calm","confident","boss","dramatic"
-  ],
-  ritsu: [
-    "brown","neat","uniform","younger","serious","proper","calm","reserved","tidy","student",
-    "anxious","envy","quiet","sharp","hair","pale","soft","careful","polite","orderly"
-  ],
-  teruki: [
-    "blonde","pompadour","uniform","flashy","proud","ego","scarf","jacket","school","smirk",
-    "stylish","cocky","hair","psychic","student","clean","sharp","dramatic","cheerful","cool"
-  ],
-  genos: [
-    "blonde","cyborg","arms","metal","eyes","serious","disciple","coat","black","jacket",
-    "lean","young","glow","wires","gloves","stern","focused","cool","burn","combat"
-  ],
-  tatsumaki: [
-    "green","short","dress","curly","hair","floating","tsundere","angry","cape","boots",
-    "petite","storm","psychic","proud","sharp","cold","childish","elite","serious","hover"
-  ],
-  yuji: [
-    "pink","hair","uniform","track","sneakers","hood","cheerful","simple","strong","compassionate",
-    "goofy","brave","red","scarf","short","warm","student","energetic","loyal","impulsive"
-  ],
-  nobara: [
-    "orange","bob","uniform","skirt","hammer","nails","confident","bold","sharp","sarcastic",
-    "fashion","boots","short","serious","proud","city","tough","brash","stylish","cool"
-  ],
-  denji: [
-    "blonde","messy","tie","shirt","chainsaw","grin","simple","poor","sloppy","reckless",
-    "teen","crude","loud","sleepy","jacket","loose","casual","hungry","wild","awkward"
-  ],
-  power: [
-    "horns","blonde","red","shirt","jacket","feral","selfish","loud","blood","cat",
-    "unhinged","sharp","messy","tie","wild","chaotic","greedy","rude","funny","gremlin"
-  ],
-  aki: [
-    "black","ponytail","suit","tie","serious","calm","smoker","cold","orderly","sword",
-    "gloves","tall","quiet","apartment","stern","neat","composed","distant","tired","glum"
-  ],
-  makima: [
-    "red","braid","eyes","spiral","uniform","tie","calm","smile","cold","mysterious",
-    "boots","coat","command","office","polite","soft","distant","control","quiet","chill"
-  ],
-  jotaro: [
-    "hat","coat","chain","tall","stoic","serious","uniform","cap","hands","pockets",
-    "cool","marine","white","black","silent","sharp","rough","aura","stand","coatflap"
-  ],
-  dio: [
-    "blonde","vampire","smirk","evil","arrogant","jacket","heart","ornate","boots","jewelry",
-    "pose","flamboyant","cruel","gold","scarf","sharp","stylish","cocky","menacing","dramatic"
-  ],
-  joseph: [
-    "scarf","hat","young","teal","muscular","clever","trick","loud","sarcastic","cheerful",
-    "ripple","bandana","gloves","coat","older","beard","purple","prank","energetic","rude"
-  ],
-  giorno: [
-    "blonde","curl","suit","pink","ladybug","calm","dreamy","mafia","brooch","elegant",
-    "stylish","slim","italy","buttons","composed","gentle","quiet","gold","refined","pose"
-  ],
-  jonathan: [
-    "gentleman","blue","jacket","muscular","proper","honor","tie","clean","short","coat",
-    "caring","serious","noble","polite","kind","classic","victorian","british","orderly","heroic"
-  ]
-};
-
-/* ============================
-   TITLE HINT POOLS
-============================ */
-const titleHintPools = {
-  "naruto": [
-    "village","forest","ninja","mission","trees","mountains","rural","school","team","war",
-    "clans","modern","roads","market","ramen","bands","snow","training","bridge","adventure"
-  ],
-  "bleach": [
-    "afterlife","swords","robes","city","school","modern","spirit","gates","rooftops","alleys",
-    "court","old","seireitei","river","bridge","walls","night","cemetery","hollow","soul"
-  ],
-  "one piece": [
-    "sea","ships","islands","pirates","harbor","tavern","sand","tropical","maps","sky",
-    "storm","compass","grand","sunny","reef","port","dock","treasure","crew","adventure"
-  ],
-  "dragon ball": [
-    "mountains","fields","training","rural","capsule","city","tournament","dojo","crater","island",
-    "forest","desert","space","future","time","tower","clouds","lake","village","adventure"
-  ],
-  "demon slayer": [
-    "forest","night","lanterns","edo","taisho","snow","mountain","train","village","temple",
-    "road","inn","river","castle","torch","fog","bridge","town","kimono","lanes"
-  ],
-  "jujutsu kaisen": [
-    "school","campus","city","modern","subway","rooftops","alleys","shrine","tunnel","dorm",
-    "stadium","bridge","streets","train","crowds","district","shadows","classroom","festival","gate"
-  ],
-  "attack on titan": [
-    "walls","district","fields","castle","forest","ruins","snow","harbor","underground","barracks",
-    "cannons","city","stone","river","cliff","tower","battlements","village","breeze","war"
-  ],
-  "death note": [
-    "city","apartment","school","desk","notebook","night","rain","neon","office","college",
-    "subway","cameras","streets","crowds","tower","modern","hospital","police","river","bridge"
-  ],
-  "fullmetal alchemist": [
-    "europe","military","train","desert","city","steam","war","library","church","laboratory",
-    "village","winter","factory","castle","cathedral","market","barracks","tunnel","gate","tracks"
-  ],
-  "tokyo ghoul": [
-    "city","alleys","rain","coffee","basement","sewers","university","streets","night","tunnel",
-    "bridge","market","district","cafes","crowds","modern","tower","park","subway","warehouse"
-  ],
-  "hunter x hunter": [
-    "forest","island","exam","tower","arena","desert","city","market","dock","ship",
-    "mountain","caves","tournament","castle","palace","river","swamp","train","village","adventure"
-  ],
-  "my hero academia": [
-    "city","school","campus","dorms","stadium","festival","modern","rooftops","gym","classroom",
-    "streets","training","hospital","mall","subway","dormitory","park","factory","arena","bridge"
-  ],
-  "black clover": [
-    "kingdom","clover","church","village","castle","fields","tower","capital","forest","library",
-    "barracks","dungeon","snow","town","churchyard","farm","lake","market","path","adventure"
-  ],
-  "chainsaw man": [
-    "city","office","warehouse","streets","apartment","rooftops","train","alley","tunnel","factory",
-    "modern","rain","subway","building","shop","river","night","crowds","station","parking"
-  ],
-  "sword art online": [
-    "virtual","castle","floors","fields","dungeon","forest","town","village","sky","ruins",
-    "desert","snow","labyrinth","island","swordland","caves","tower","lake","market","adventure"
-  ],
-  "seven deadly sins": [
-    "kingdom","medieval","castle","village","tavern","forest","plains","knights","war","roads",
-    "church","fields","capital","bridge","armor","magic","rural","adventure","demons","britannia"
-  ],
-  "mob psycho 100": [
-    "city","suburb","school","club","office","modern","apartment","streets","rooftops","alley",
-    "afterhours","spirit","exorcism","shop","road","training","festival","arcade","bridge","adolescence"
-  ],
-  "one punch man": [
-    "city","suburb","apartment","training","heroes","association","modern","streets","monster","ruins",
-    "stadium","lab","bunker","concrete","harbor","bridge","alley","tower","office","disaster"
-  ],
-  "jojo's bizarre adventure": [
-    "city","mansion","train","harbor","egypt","italy","town","streets","alley","rooftops",
-    "castle","desert","coast","bizarre","adventure","retro","80s","90s","stylish","journey"
-  ]
-};
-
-/* ============================
-   LOCATION HINT POOLS
-============================ */
-const locationHintPools = {
-  "konoha": [
-    "village","forest","trees","walls","mountains","river","rural","gate","rooftops","streets",
-    "training","leaf","market","cliff","hidden","school","fields","homes","ramen","paths"
-  ],
-  "soul society": [
-    "afterlife","walls","court","gates","stone","old","district","rooftops","barracks","courtyard",
-    "river","bridge","fields","temple","gate","lanterns","seireitei","paths","towers","gardens"
-  ],
-  "grand line": [
-    "sea","islands","storms","currents","ships","reef","fog","tropical","clouds","harbor",
-    "waves","wind","compass","danger","mists","routes","sky","sun","coast","tides"
-  ],
-  "namek": [
-    "green","fields","lakes","islands","sky","pillars","village","orbs","rural","mountains",
-    "river","trees","flat","quiet","alien","cliffs","ponds","plain","blue","horizon"
-  ],
-  "wall maria": [
-    "walls","stone","fields","farms","village","gate","district","roads","river","towers",
-    "barracks","fields","houses","horses","battlements","forest","cliff","plains","paths","border"
-  ],
-  "ua high": [
-    "school","campus","dorms","gym","stadium","city","modern","gate","classroom","rooftops",
-    "training","arena","track","hallway","labs","dormitory","courtyard","field","stairs","arena"
-  ],
-  "demon slayer corps hq": [
-    "estate","mansion","forest","lanterns","paths","garden","courtyard","edo","pines","pond",
-    "building","tiles","gate","hall","tatami","trees","meetings","stone","steps","quiet"
-  ],
-  "hidden sand village": [
-    "desert","sand","wind","walls","dunes","gate","towers","stone","dust","ramparts",
-    "sun","market","streets","dry","oasis","tent","storm","plaza","heat","rock"
-  ],
-  "greed island": [
-    "island","forest","plains","mountains","village","game","river","fields","castle","town",
-    "bridge","caves","cliffs","beach","harbor","paths","ruins","camp","trees","arena"
-  ],
-  "fairy tail guild": [
-    "guild","hall","bar","tables","city","stone","banner","jobs","stairs","fireplace",
-    "counter","crowded","wood","stage","doors","windows","bridge","river","square","rooftops"
-  ],
-  "marineford": [
-    "harbor","fortress","sea","war","ice","ships","plaza","platform","walls","towers",
-    "stairs","coast","port","waves","bridge","town","flag","navy","dock","bay"
-  ],
-  "infinity castle": [
-    "castle","interior","endless","lanterns","wood","floating","hall","stairs","dark","maze",
-    "doors","ceiling","space","shifting","quiet","echo","void","dim","rooms","infinite"
-  ],
-  "liones": [
-    "castle","kingdom","walls","town","plaza","flags","stone","fountain","church","streets",
-    "market","square","gate","court","throne","bridge","guards","village","castleyard","banners"
-  ],
-  "boar hat": [
-    "tavern","bar","ale","tables","hill","road","tiny","wood","sign","kegs",
-    "stools","mugs","wagon","mobile","counter","stairs","cozy","remote","inn","rooftop"
-  ],
-  "camelot": [
-    "castle","spires","knights","walls","towers","stone","flag","kingdom","hall","throne",
-    "bridge","courtyard","garden","city","tournament","battlements","plaza","gate","square","old"
-  ],
-  "jujutsu high": [
-    "campus","school","dorms","gates","courtyard","training","dojo","field","hall","classroom",
-    "rooftops","shrine","forest","paths","modern","stairs","dormitory","yard","buildings","quiet"
-  ],
-  "shibuya": [
-    "city","station","crossing","crowds","lights","underground","subway","tunnel","streets","rooftops",
-    "mall","alleys","modern","plaza","bridge","signs","shops","night","stairs","chaos"
-  ],
-  "public safety hq": [
-    "office","city","modern","floors","elevator","desks","meeting","hall","windows","tower",
-    "corridor","file","lights","badge","crowds","lobby","stairs","rooftops","uniform","bureau"
-  ],
-  "morioh": [
-    "town","coast","suburb","streets","alleys","harbor","residential","school","cafe","park",
-    "houses","hills","signs","shops","quiet","roads","plaza","tunnel","station","neighborhood"
-  ],
-  "dio's mansion": [
-    "mansion","gothic","stairs","hall","pillars","windows","dark","chandelier","garden","gate",
-    "balcony","carpet","porch","rooms","statue","grand","curtains","courtyard","stone","ominous"
-  ]
-};
-
-/* ============================
-   HINT GENERATOR
-============================ */
-function getHint(word, mode) {
+/* One-word hint generator (simple & vague) */
+function getHintForWord(word, mode) {
   const w = word.toLowerCase();
 
-  if (mode === "characters") {
-    const list = characterHintPools[w];
-    if (list && list.length) {
-      return list[Math.floor(Math.random() * list.length)];
-    }
-    const fallback = [
-      "hair","eyes","coat","mask","scarf",
-      "uniform","jacket","hoodie","boots","gloves"
-    ];
-    return fallback[Math.floor(Math.random() * fallback.length)];
-  }
+  // Title-based hints (setting / vibe)
+  const titleHints = {
+    "naruto": ["village","ninja","forest","adventure"],
+    "bleach": ["afterlife","swords","spirits","city"],
+    "one piece": ["sea","pirates","islands","adventure"],
+    "dragon ball": ["training","mountains","tournament","adventure"],
+    "demon slayer": ["edo","night","train","forest"],
+    "jujutsu kaisen": ["school","curses","city","modern"],
+    "attack on titan": ["walls","giants","war","fields"],
+    "death note": ["city","notebook","crime","night"],
+    "fullmetal alchemist": ["alchemy","war","train","kingdom"],
+    "tokyo ghoul": ["city","coffee","night","underground"],
+    "hunter x hunter": ["exam","island","tower","adventure"],
+    "my hero academia": ["school","heroes","city","stadium"],
+    "black clover": ["kingdom","magic","village","castle"],
+    "chainsaw man": ["city","office","devils","modern"],
+    "sword art online": ["virtual","castle","floors","adventure"],
+    "seven deadly sins": ["medieval","knights","kingdom","tavern"],
+    "mob psycho 100": ["city","school","spirits","club"],
+    "one punch man": ["city","heroes","monsters","ruins"],
+    "jojo's bizarre adventure": ["journey","retro","bizarre","stylish"]
+  };
+
+  const locationHints = {
+    "konoha": ["village","trees","walls","cliff"],
+    "soul society": ["afterlife","walls","court","gates"],
+    "grand line": ["sea","islands","storms","crew"],
+    "namek": ["green","lakes","sky","quiet"],
+    "wall maria": ["walls","fields","gate","border"],
+    "ua high": ["school","campus","stadium","city"],
+    "demon slayer corps hq": ["estate","forest","lanterns","quiet"],
+    "hidden sand village": ["desert","sand","walls","heat"],
+    "greed island": ["island","game","forest","adventure"],
+    "fairy tail guild": ["guild","hall","bar","jobs"],
+    "marineford": ["harbor","fortress","war","sea"],
+    "infinity castle": ["castle","floating","maze","dim"],
+    "liones": ["castle","kingdom","town","banners"],
+    "boar hat": ["tavern","hill","tiny","road"],
+    "camelot": ["castle","knights","walls","tournament"],
+    "jujutsu high": ["campus","training","gates","modern"],
+    "shibuya": ["station","crowds","lights","city"],
+    "public safety hq": ["office","tower","city","desks"],
+    "morioh": ["town","coast","suburb","park"],
+    "dio's mansion": ["mansion","gothic","stairs","dark"]
+  };
 
   if (mode === "titles") {
-    const list = titleHintPools[w];
-    if (list && list.length) {
-      return list[Math.floor(Math.random() * list.length)];
-    }
-    const fallback = ["series","city","sea","space","school","forest","village","modern","castle","walls"];
+    const k = w;
+    const lst = titleHints[k];
+    if (lst) return lst[Math.floor(Math.random() * lst.length)];
+    const fallback = ["city","adventure","school","sea","forest","castle","space","train","modern","walls"];
     return fallback[Math.floor(Math.random() * fallback.length)];
   }
 
   if (mode === "locations") {
-    const list = locationHintPools[w];
-    if (list && list.length) {
-      return list[Math.floor(Math.random() * list.length)];
-    }
-    const fallback = ["place","village","city","sea","walls","castle","forest","fields","train","island"];
+    const k = w;
+    const lst = locationHints[k];
+    if (lst) return lst[Math.floor(Math.random() * lst.length)];
+    const fallback = ["village","city","walls","sea","forest","castle","fields","station","harbor","island"];
     return fallback[Math.floor(Math.random() * fallback.length)];
   }
 
-  return "subtle";
+  // characters: vague appearance / personality
+  const charFallback = ["hair","eyes","coat","scarf","mask","calm","loud","serious","cheerful","quiet"];
+  return charFallback[Math.floor(Math.random() * charFallback.length)];
 }
 
 /* ============================
-   GAME STATE
+   GLOBAL UI / STATE
 ============================ */
 const screen = document.getElementById("screen");
-const subtitle = document.getElementById("subtitle");
+const subtitleEl = document.getElementById("subtitle");
 
 const state = {
-  playMode: "",        // "pass" or "online"
-  roomCode: "",        // e.g. "ABQXJ"
-  mode: "",
+  playMode: null,   // "local" or "online"
+  mode: null,       // "characters" | "titles" | "locations"
   hintEnabled: false,
-  totalPlayers: 0,
-  currentPlayer: 1,
-  imposterIndex: 1,
-  secretWord: "",
-  wordList: [],
-  vote: null,
-  imposterHint: null,
-  players: []
+
+  // Local game state
+  local: {
+    players: [],
+    totalPlayers: 0,
+    currentIndex: 0,
+    imposterIndex: 0,
+    secretWord: "",
+    imposterHint: null
+  },
+
+  // Online game state
+  online: {
+    myPlayerId: null,
+    myName: "",
+    roomCode: "",
+    isHost: false,
+    roomUnsub: null,
+    roomData: null
+  }
 };
+
+function setSubtitle(text) {
+  subtitleEl.textContent = text || "";
+}
 
 /* ============================
    UTILS
 ============================ */
-function updateSubtitle() {
-  let text = "";
-  if (!state.playMode) {
-    text = "Select how you want to play";
-  } else if (state.playMode === "pass") {
-    text = "Mode: Pass-Around (one device)";
-  } else if (state.playMode === "online") {
-    text = state.roomCode
-      ? `Mode: Online · Room ${state.roomCode}`
-      : "Mode: Online (room not set)";
-  }
-  subtitle.textContent = text;
-}
-
 function randomRoomCode(length = 5) {
-  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // no O/I to avoid confusion
+  const letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
   let out = "";
   for (let i = 0; i < length; i++) {
     out += letters[Math.floor(Math.random() * letters.length)];
@@ -579,473 +260,761 @@ function randomRoomCode(length = 5) {
   return out;
 }
 
-/* ============================
-   SCOREBOARD
-============================ */
-function renderScoreboard() {
-  if (!state.players || state.players.length === 0) return "";
-  const rows = state.players
-    .map((p) => `${p.name}: ${p.score}`)
-    .join("<br>");
-  const roomLine = (state.playMode === "online" && state.roomCode)
-    ? `<div class="small">Room: ${state.roomCode}</div>`
-    : "";
-  return `
-    <div class="word-box">
-      <strong>Scores</strong><br>
-      ${rows}
-      ${roomLine}
-    </div>
-  `;
+function randomItem(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
 }
 
 /* ============================
-   PLAY MODE SELECT
+   ENTRY SCREEN
 ============================ */
 function showPlayModeSelect() {
-  screen.innerHTML = `
-    <h3>Choose Play Style</h3>
-    <button class="playmode-btn" data-mode="pass">
-      Pass-Around (local, one device)
-    </button>
-    <button class="playmode-btn" data-mode="online">
-      Online (room code, host & join)
-    </button>
-    <p class="small">
-      Online mode gives you a room code for playing over voice chat/Discord.
-      The actual game still runs on this device.
-    </p>
-    <button id="continue">Next</button>
+  // clean up online listener if any
+  if (state.online.roomUnsub) {
+    state.online.roomUnsub();
+    state.online.roomUnsub = null;
+  }
+  state.playMode = null;
+  state.online.roomData = null;
+  state.online.roomCode = "";
+  state.online.isHost = false;
 
-    ${renderScoreboard()}
+  setSubtitle("Choose how to play");
+
+  screen.innerHTML = `
+    <h3>Play Style</h3>
+    <button class="choice-btn" data-mode="local">Local (Pass-Around)</button>
+    <button class="choice-btn" data-mode="online">Online (Firebase)</button>
+    <p class="small">
+      Local: one phone passed around.<br>
+      Online: each player opens this site, joins room code, and host runs the game with live sync.
+    </p>
+    <button id="continue">Continue</button>
   `;
 
-  let selected = null;
-
-  document.querySelectorAll(".playmode-btn").forEach(btn => {
+  let choice = null;
+  document.querySelectorAll(".choice-btn").forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll(".playmode-btn").forEach(b => b.classList.remove("selected"));
+      document.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
-      selected = btn.dataset.mode;
+      choice = btn.dataset.mode;
     };
   });
 
   document.getElementById("continue").onclick = () => {
-    if (!selected) {
-      alert("Select a play style first.");
-      return;
-    }
-    state.playMode = selected;
-    state.roomCode = "";
-    updateSubtitle();
-
-    if (selected === "online") {
-      showOnlineRoomMenu();
+    if (!choice) { alert("Select Local or Online."); return; }
+    state.playMode = choice;
+    if (choice === "local") {
+      setSubtitle("Local pass-around mode");
+      showLocalModeSelect();
     } else {
-      showModeSelect();
+      setSubtitle("Online mode (Firebase)");
+      showOnlineNameAndRoleSelect();
     }
   };
 }
 
 /* ============================
-   ONLINE: HOST / JOIN ROOM
+   LOCAL MODE
 ============================ */
-function showOnlineRoomMenu() {
-  screen.innerHTML = `
-    <h3>Online Mode</h3>
-    <button class="online-btn" id="hostRoom">Host Room</button>
-    <button class="online-btn" id="joinRoom">Join Room</button>
-    <p class="small">
-      Host Room: create a random code and share it with friends.<br>
-      Join Room: type in the code your host gave you.<br>
-      (This version doesn't sync devices; it's for organizing who is in which game while you talk over voice.)
-    </p>
-
-    ${renderScoreboard()}
-  `;
-
-  document.getElementById("hostRoom").onclick = () => {
-    state.roomCode = randomRoomCode();
-    updateSubtitle();
-    screen.innerHTML = `
-      <h3>Room Created</h3>
-      <div class="word-box">
-        Share this code with your friends:<br>
-        <strong style="font-size:1.5rem;">${state.roomCode}</strong>
-      </div>
-      <p class="small center">
-        Everyone joins using this code. You run the game on this device.
-      </p>
-      <button id="start">Continue to Gamemode Select</button>
-
-      ${renderScoreboard()}
-    `;
-    document.getElementById("start").onclick = showModeSelect;
-  };
-
-  document.getElementById("joinRoom").onclick = () => {
-    screen.innerHTML = `
-      <h3>Join Room</h3>
-      <p class="small center">Enter the room code your host gave you.</p>
-      <input id="roomInput" type="text" maxlength="8" placeholder="e.g. ABCDE">
-      <button id="join">Join</button>
-
-      ${renderScoreboard()}
-    `;
-    document.getElementById("join").onclick = () => {
-      const code = (document.getElementById("roomInput").value || "").trim().toUpperCase();
-      if (!code) {
-        alert("Type a room code.");
-        return;
-      }
-      // No real server to verify – just store it locally
-      state.roomCode = code;
-      updateSubtitle();
-      screen.innerHTML = `
-        <h3>Joined Room</h3>
-        <div class="word-box">
-          Room Code:<br>
-          <strong style="font-size:1.5rem;">${state.roomCode}</strong>
-        </div>
-        <p class="small center">
-          Your host runs the round on their device while you all talk.
-          This device will still handle words and roles locally.
-        </p>
-        <button id="start">Continue to Gamemode Select</button>
-
-        ${renderScoreboard()}
-      `;
-      document.getElementById("start").onclick = showModeSelect;
-    };
-  };
-}
-
-/* ============================
-   MODE SELECT (CHAR/TITLE/LOC)
-============================ */
-function showModeSelect() {
-  updateSubtitle();
+function showLocalModeSelect() {
   screen.innerHTML = `
     <h3>Select Gamemode</h3>
-    <button class="mode-btn" data-mode="characters">Anime Characters</button>
-    <button class="mode-btn" data-mode="titles">Anime Titles</button>
-    <button class="mode-btn" data-mode="locations">Anime Locations</button>
+    <button class="choice-btn" data-mode="characters">Anime Characters</button>
+    <button class="choice-btn" data-mode="titles">Anime Titles</button>
+    <button class="choice-btn" data-mode="locations">Anime Locations</button>
 
     <h3>Options</h3>
     <label>
       <input type="checkbox" id="hintToggle">
       Enable Imposter Hints
     </label>
-    <div class="small">Hints are a single vague word related to the answer (setting, look, or vibe).</div>
+    <div class="small">Hints are a single vague word about look, setting, or vibe.</div>
 
     <button id="continue">Continue</button>
-
-    ${renderScoreboard()}
   `;
 
   let selected = null;
-
-  document.querySelectorAll(".mode-btn").forEach(btn => {
+  document.querySelectorAll(".choice-btn").forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("selected"));
+      document.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
       selected = btn.dataset.mode;
     };
   });
 
   document.getElementById("continue").onclick = () => {
-    if (!selected) {
-      alert("Choose a gamemode.");
-      return;
-    }
-
+    if (!selected) { alert("Choose a gamemode."); return; }
     state.mode = selected;
     state.hintEnabled = document.getElementById("hintToggle").checked;
-
-    state.wordList =
-      selected === "characters" ? animeCharacters :
-      selected === "titles" ? animeTitles :
-      animeLocations;
-
-    showPlayerSetup();
+    showLocalPlayerCount();
   };
 }
 
-/* ============================
-   PLAYER COUNT
-============================ */
-function showPlayerSetup() {
-  updateSubtitle();
+function showLocalPlayerCount() {
   screen.innerHTML = `
     <h3>How many players?</h3>
-    <input id="players" type="number" min="3" max="12" value="${state.totalPlayers || 4}">
+    <input id="players" type="number" min="3" max="12" value="4">
     <button id="next">Next: Names</button>
-
-    ${renderScoreboard()}
   `;
 
   document.getElementById("next").onclick = () => {
     const count = parseInt(document.getElementById("players").value, 10);
     if (count < 3 || count > 12) {
-      alert("Choose 3–12 players.");
+      alert("Choose between 3 and 12 players.");
       return;
     }
-
-    state.totalPlayers = count;
-    showNameEntry();
+    state.local.totalPlayers = count;
+    showLocalNameEntry();
   };
 }
 
-/* ============================
-   NAME ENTRY
-============================ */
-function showNameEntry() {
-  updateSubtitle();
-  let inputsHtml = "";
-  for (let i = 0; i < state.totalPlayers; i++) {
-    const existing = state.players[i]?.name || "";
-    inputsHtml += `
-      <div>
-        <input type="text" id="name_${i}" placeholder="Player ${i+1} name" value="${existing}">
-      </div>
-    `;
+function showLocalNameEntry() {
+  let inputs = "";
+  for (let i = 0; i < state.local.totalPlayers; i++) {
+    inputs += `<div><input id="name_${i}" type="text" placeholder="Player ${i+1} name"></div>`;
   }
 
   screen.innerHTML = `
-    <h3>Enter Player Names</h3>
-    <div class="name-list">
-      ${inputsHtml}
-    </div>
+    <h3>Enter Names</h3>
+    <div class="name-list">${inputs}</div>
     <button id="start">Start Round</button>
-
-    ${renderScoreboard()}
   `;
 
   document.getElementById("start").onclick = () => {
-    const newPlayers = [];
-    for (let i = 0; i < state.totalPlayers; i++) {
-      const input = document.getElementById(`name_${i}`);
-      let name = (input.value || "").trim();
-      if (!name) name = `Player ${i+1}`;
-
-      const old = state.players[i];
-      const oldScore = old ? old.score : 0;
-      newPlayers.push({ name, score: oldScore || 0 });
+    const players = [];
+    for (let i = 0; i < state.local.totalPlayers; i++) {
+      const nameInput = document.getElementById(`name_${i}`);
+      let name = (nameInput && nameInput.value.trim()) || `Player ${i+1}`;
+      players.push({ name });
     }
-    state.players = newPlayers;
+    state.local.players = players;
 
-    state.currentPlayer = 1;
-    state.imposterIndex = 1 + Math.floor(Math.random() * state.totalPlayers);
-    state.secretWord = state.wordList[Math.floor(Math.random() * state.wordList.length)];
-    state.imposterHint = state.hintEnabled ? getHint(state.secretWord, state.mode) : null;
-    state.vote = null;
+    const list =
+      state.mode === "characters" ? animeCharacters :
+      state.mode === "titles" ? animeTitles :
+      animeLocations;
 
-    showPassDevice();
+    state.local.secretWord = randomItem(list);
+    state.local.imposterIndex = Math.floor(Math.random() * state.local.totalPlayers);
+    state.local.currentIndex = 0;
+    state.local.imposterHint = state.hintEnabled
+      ? getHintForWord(state.local.secretWord, state.mode)
+      : null;
+
+    showLocalPassDevice();
   };
 }
 
-/* ============================
-   PASS DEVICE
-============================ */
-function showPassDevice() {
-  updateSubtitle();
-  const name = state.players[state.currentPlayer - 1]?.name || `Player ${state.currentPlayer}`;
+function showLocalPassDevice() {
+  const idx = state.local.currentIndex;
+  const name = state.local.players[idx].name;
+
   screen.innerHTML = `
     <div class="center">
-      <p>Pass to <strong>${name}</strong></p>
-      <button id="reveal">I am ${name}</button>
+      <p>Pass the device to <strong>${name}</strong></p>
+      <button id="seeRole">I am ${name}</button>
     </div>
   `;
-  document.getElementById("reveal").onclick = showRole;
+
+  document.getElementById("seeRole").onclick = showLocalRole;
 }
 
-/* ============================
-   ROLE SCREEN
-============================ */
-function showRole() {
-  updateSubtitle();
-  const idx = state.currentPlayer - 1;
-  const playerName = state.players[idx]?.name || `Player ${state.currentPlayer}`;
-  const isImposter = state.currentPlayer === state.imposterIndex;
+function showLocalRole() {
+  const idx = state.local.currentIndex;
+  const player = state.local.players[idx];
+  const isImposter = (idx === state.local.imposterIndex);
 
-  let hintHtml = "";
-  if (isImposter && state.hintEnabled && state.imposterHint) {
-    hintHtml = `
+  let info = "";
+  if (isImposter) {
+    info += `<p style="color:#ff7fd1"><strong>You are the Imposter 😈</strong></p>`;
+    if (state.hintEnabled && state.local.imposterHint) {
+      info += `
+        <div class="word-box">
+          <strong>Hint:</strong><br>${state.local.imposterHint}
+        </div>
+        <p class="small">This is one vague word (like sea, walls, forest, train, modern, edo).</p>
+      `;
+    }
+  } else {
+    info += `
       <div class="word-box">
-        <strong>Hint:</strong><br>
-        ${state.imposterHint}
+        <strong>Secret Word:</strong><br>${state.local.secretWord}
       </div>
-      <div class="small center">One vague word about the answer (like sea, walls, trees, train, modern, edo).</div>
     `;
   }
 
   screen.innerHTML = `
     <div class="center">
-      <h3>${playerName}</h3>
-
-      ${
-        isImposter
-          ? `<p style="color:#ff7fd1"><strong>You are the Imposter 😈</strong></p>`
-          : `<div class="word-box"><strong>Word:</strong> ${state.secretWord}</div>`
-      }
-
-      ${hintHtml}
-
+      <h3>${player.name}</h3>
+      ${info}
       <button id="done">Done</button>
     </div>
   `;
 
   document.getElementById("done").onclick = () => {
-    if (state.currentPlayer < state.totalPlayers) {
-      state.currentPlayer++;
-      showPassDevice();
+    if (state.local.currentIndex < state.local.totalPlayers - 1) {
+      state.local.currentIndex++;
+      showLocalPassDevice();
     } else {
-      showDiscussion();
+      showDiscussion(true); // true = local
     }
   };
 }
 
 /* ============================
-   DISCUSSION
+   ONLINE MODE
 ============================ */
-function showDiscussion() {
-  updateSubtitle();
+function showOnlineNameAndRoleSelect() {
   screen.innerHTML = `
-    <h3>Discussion Phase</h3>
-    <p class="center small">
-      Give clues, ask questions, and figure out who doesn't know the word.
-    </p>
-    <button id="vote">Start Voting</button>
+    <h3>Online Setup</h3>
+    <p class="small center">Enter your name and choose Host or Join.</p>
+    <input id="playerName" type="text" placeholder="Your name">
 
-    ${renderScoreboard()}
-  `;
-  document.getElementById("vote").onclick = showVoting;
-}
+    <button class="choice-btn" data-role="host">Host Room</button>
+    <button class="choice-btn" data-role="join">Join Room</button>
 
-/* ============================
-   VOTING
-============================ */
-function showVoting() {
-  updateSubtitle();
-  let options = "";
-  for (let i = 1; i <= state.totalPlayers; i++) {
-    const name = state.players[i-1]?.name || `Player ${i}`;
-    options += `<button class="vote-btn" data-player="${i}">${name}</button>`;
-  }
+    <div id="joinExtra" style="display:none;">
+      <input id="roomCodeInput" type="text" maxlength="8" placeholder="Room code (e.g. ABCDE)">
+    </div>
 
-  screen.innerHTML = `
-    <h3>Vote for the Imposter</h3>
-    <div class="vote-grid">${options}</div>
-    <button id="confirm">Confirm Vote</button>
+    <button id="continue">Continue</button>
   `;
 
-  document.querySelectorAll(".vote-btn").forEach(btn => {
+  let role = null;
+  const joinExtra = document.getElementById("joinExtra");
+
+  document.querySelectorAll(".choice-btn").forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll(".vote-btn").forEach(b => b.classList.remove("selected"));
+      document.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected"));
       btn.classList.add("selected");
-      state.vote = parseInt(btn.dataset.player, 10);
+      role = btn.dataset.role;
+      joinExtra.style.display = role === "join" ? "block" : "none";
     };
   });
 
-  document.getElementById("confirm").onclick = resolveVote;
+  document.getElementById("continue").onclick = async () => {
+    const nameInput = document.getElementById("playerName");
+    const name = (nameInput.value || "").trim() || "Player";
+
+    if (!role) {
+      alert("Select Host or Join.");
+      return;
+    }
+
+    state.online.myName = name;
+    state.online.myPlayerId = (crypto.randomUUID && crypto.randomUUID()) ||
+                              ("p_" + Math.random().toString(36).slice(2));
+
+    if (role === "host") {
+      await onlineHostCreateRoom();
+    } else {
+      const codeInput = document.getElementById("roomCodeInput");
+      const rawCode = (codeInput.value || "").trim().toUpperCase();
+      if (!rawCode) { alert("Enter a room code to join."); return; }
+      await onlineJoinRoom(rawCode);
+    }
+  };
 }
 
-/* ============================
-   VOTE RESULT
-============================ */
-function resolveVote() {
-  updateSubtitle();
-  if (!state.vote) {
-    alert("Select someone!");
+async function onlineHostCreateRoom() {
+  const code = randomRoomCode();
+  const ref = db.collection("rooms").doc(code);
+
+  state.online.isHost = true;
+  state.online.roomCode = code;
+
+  await ref.set({
+    roomCode: code,
+    status: "lobby",
+    createdAt: Date.now(),
+    mode: null,
+    hintEnabled: false,
+    secretWord: null,
+    imposterId: null,
+    imposterHint: null,
+    players: [{
+      id: state.online.myPlayerId,
+      name: state.online.myName
+    }]
+  });
+
+  subscribeToRoom(code);
+}
+
+async function onlineJoinRoom(code) {
+  const ref = db.collection("rooms").doc(code);
+  const snap = await ref.get();
+  if (!snap.exists) {
+    alert("Room not found.");
     return;
   }
 
-  const impName = state.players[state.imposterIndex - 1]?.name || `Player ${state.imposterIndex}`;
+  state.online.isHost = false;
+  state.online.roomCode = code;
 
-  if (state.vote === state.imposterIndex) {
-    screen.innerHTML = `
-      <h3>Imposter Caught!</h3>
-      <p class="center small">${impName} was voted as the Imposter.</p>
-      <p class="center small">They get one final guess at the word.</p>
-      <button id="guess">Imposter Guess</button>
+  await ref.update({
+    players: firebase.firestore.FieldValue.arrayUnion({
+      id: state.online.myPlayerId,
+      name: state.online.myName
+    })
+  });
 
-      ${renderScoreboard()}
-    `;
-    document.getElementById("guess").onclick = showImposterGuess;
+  subscribeToRoom(code);
+}
+
+function subscribeToRoom(code) {
+  if (state.online.roomUnsub) {
+    state.online.roomUnsub();
+    state.online.roomUnsub = null;
+  }
+
+  const ref = db.collection("rooms").doc(code);
+  state.online.roomUnsub = ref.onSnapshot(doc => {
+    if (!doc.exists) {
+      screen.innerHTML = `
+        <h3>Room Closed</h3>
+        <p class="center small">The host ended the room.</p>
+        <button onclick="showPlayModeSelect()">Back to Start</button>
+      `;
+      return;
+    }
+
+    const data = doc.data();
+    state.online.roomData = data;
+
+    // Render based on status
+    if (data.status === "lobby") {
+      if (state.online.isHost) showOnlineLobbyHost(data);
+      else showOnlineLobbyGuest(data);
+    } else if (data.status === "setupMode") {
+      if (state.online.isHost) showOnlineModeSelectHost(data);
+      else showOnlineWaiting("Host is choosing gamemode...");
+    } else if (data.status === "roles") {
+      showOnlineRolesScreen(data);
+    } else if (data.status === "discussion") {
+      showDiscussion(false); // false = online
+    } else if (data.status === "voting") {
+      showVoting(false); // false = online
+    } else if (data.status === "results") {
+      showOnlineResults(data);
+    }
+  });
+
+  setSubtitle(`Online · Room ${code} · ${state.online.isHost ? "Host" : "Player"}`);
+}
+
+/* ONLINE: Lobby */
+function renderPlayerList(players) {
+  if (!players || !players.length) return "<p class='small center'>No players yet.</p>";
+  const pills = players.map(p => {
+    const marker = p.id === state.online.myPlayerId ? " (you)" : "";
+    return `<span class="pill">${p.name}${marker}</span>`;
+  }).join(" ");
+  return `<div class="center">${pills}</div>`;
+}
+
+function showOnlineLobbyHost(room) {
+  screen.innerHTML = `
+    <h3>Lobby (Host)</h3>
+    <div class="word-box">
+      Room Code:<br>
+      <strong style="font-size:1.6rem;">${room.roomCode}</strong>
+    </div>
+    <p class="small center">Share this code with your friends and tell them to join.</p>
+    <h4>Players</h4>
+    ${renderPlayerList(room.players)}
+    <button id="startSetup">Next: Choose Gamemode</button>
+    <button id="closeRoom" style="background:#ff4b6e;margin-top:6px;">Close Room</button>
+  `;
+
+  document.getElementById("startSetup").onclick = async () => {
+    const ref = db.collection("rooms").doc(room.roomCode);
+    await ref.update({ status: "setupMode" });
+  };
+
+  document.getElementById("closeRoom").onclick = async () => {
+    const ref = db.collection("rooms").doc(room.roomCode);
+    await ref.delete();
+  };
+}
+
+function showOnlineLobbyGuest(room) {
+  screen.innerHTML = `
+    <h3>Lobby</h3>
+    <div class="word-box">
+      Room Code:<br>
+      <strong style="font-size:1.4rem;">${room.roomCode}</strong>
+    </div>
+    <p class="small center">Waiting for host to start the game...</p>
+    <h4>Players</h4>
+    ${renderPlayerList(room.players)}
+    <button onclick="showPlayModeSelect()">Leave Room</button>
+  `;
+}
+
+function showOnlineWaiting(msg) {
+  const room = state.online.roomData;
+  screen.innerHTML = `
+    <h3>Online Room</h3>
+    <div class="word-box">
+      Room: <strong>${room.roomCode}</strong>
+    </div>
+    <p class="small center">${msg}</p>
+    <h4>Players</h4>
+    ${renderPlayerList(room.players)}
+    <button onclick="showPlayModeSelect()">Leave Room</button>
+  `;
+}
+
+/* ONLINE: Host gamemode selection */
+function showOnlineModeSelectHost(room) {
+  screen.innerHTML = `
+    <h3>Choose Gamemode</h3>
+    <div class="word-box">
+      Room: <strong>${room.roomCode}</strong>
+    </div>
+    <button class="choice-btn" data-mode="characters">Anime Characters</button>
+    <button class="choice-btn" data-mode="titles">Anime Titles</button>
+    <button class="choice-btn" data-mode="locations">Anime Locations</button>
+
+    <h3>Options</h3>
+    <label>
+      <input type="checkbox" id="hintToggle">
+      Enable Imposter Hints
+    </label>
+    <div class="small">
+      Hints are a single vague word about look, location, or period (sea, walls, forest, train, modern, edo).
+    </div>
+
+    <button id="startRound">Start Round</button>
+    <button onclick="showPlayModeSelect()" style="background:#ff4b6e;margin-top:6px;">Leave Room</button>
+
+    <h4>Players</h4>
+    ${renderPlayerList(room.players)}
+  `;
+
+  let chosenMode = null;
+  document.querySelectorAll(".choice-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".choice-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      chosenMode = btn.dataset.mode;
+    };
+  });
+
+  document.getElementById("startRound").onclick = async () => {
+    if (!chosenMode) {
+      alert("Choose a gamemode.");
+      return;
+    }
+
+    const hintOn = document.getElementById("hintToggle").checked;
+    const players = room.players || [];
+    if (players.length < 3) {
+      alert("Need at least 3 players in the room.");
+      return;
+    }
+
+    const imposter = randomItem(players);
+    const wordList =
+      chosenMode === "characters" ? animeCharacters :
+      chosenMode === "titles" ? animeTitles :
+      animeLocations;
+
+    const secretWord = randomItem(wordList);
+    const hint = hintOn ? getHintForWord(secretWord, chosenMode) : null;
+
+    const ref = db.collection("rooms").doc(room.roomCode);
+    await ref.update({
+      status: "roles",
+      mode: chosenMode,
+      hintEnabled: hintOn,
+      secretWord,
+      imposterId: imposter.id,
+      imposterHint: hint
+    });
+  };
+}
+
+/* ONLINE: role screen */
+function showOnlineRolesScreen(room) {
+  const me = state.online.myPlayerId;
+  const isImposter = (me === room.imposterId);
+
+  let body = "";
+  if (isImposter) {
+    body += `<p style="color:#ff7fd1"><strong>You are the Imposter 😈</strong></p>`;
+    if (room.hintEnabled && room.imposterHint) {
+      body += `
+        <div class="word-box">
+          <strong>Hint:</strong><br>${room.imposterHint}
+        </div>
+        <p class="small">One subtle word related to the answer.</p>
+      `;
+    } else {
+      body += `<p class="small">No hint this round.</p>`;
+    }
   } else {
-    const votedName = state.players[state.vote - 1]?.name || `Player ${state.vote}`;
-    screen.innerHTML = `
-      <h3>Imposter Wins 😈</h3>
-      <p class="center small">You voted ${votedName}, but they were innocent.</p>
-      <p class="center small">Real Imposter: ${impName}</p>
-      <div class="word-box">Word: ${state.secretWord}</div>
-      <button onclick="showPlayModeSelect()">Play Again</button>
-
-      ${renderScoreboard()}
+    body += `
+      <div class="word-box">
+        <strong>Secret Word:</strong><br>${room.secretWord}
+      </div>
+      <p class="small">Give clues without saying the word directly.</p>
     `;
+  }
+
+  const extraHost = state.online.isHost
+    ? `<button id="startDiscussion">Start Discussion</button>`
+    : `<p class="small center">Waiting for host to start discussion...</p>`;
+
+  screen.innerHTML = `
+    <h3>Your Role</h3>
+    <div class="word-box">
+      Room: <strong>${room.roomCode}</strong>
+    </div>
+    ${body}
+    ${extraHost}
+    <button onclick="showPlayModeSelect()" style="background:#ff4b6e;margin-top:6px;">Leave Room</button>
+  `;
+
+  if (state.online.isHost) {
+    document.getElementById("startDiscussion").onclick = async () => {
+      const ref = db.collection("rooms").doc(room.roomCode);
+      await ref.update({ status: "discussion" });
+    };
   }
 }
 
 /* ============================
-   IMPOSTER FINAL GUESS
+   DISCUSSION (shared)
 ============================ */
-function showImposterGuess() {
-  updateSubtitle();
-  const impName = state.players[state.imposterIndex - 1]?.name || `Player ${state.imposterIndex}`;
+function showDiscussion(isLocal) {
+  if (state.playMode === "online" && state.online.roomData) {
+    const room = state.online.roomData;
+    const extraHost = state.online.isHost
+      ? `<button id="startVoting">Start Voting</button>`
+      : `<p class="small center">Host will move to voting when ready.</p>`;
 
+    screen.innerHTML = `
+      <h3>Discussion</h3>
+      <div class="word-box">
+        Talk about clues and sus behavior. Don't reveal the word directly.
+      </div>
+      ${extraHost}
+      <button onclick="showPlayModeSelect()" style="background:#ff4b6e;margin-top:6px;">Leave Room</button>
+    `;
+
+    if (state.online.isHost) {
+      document.getElementById("startVoting").onclick = async () => {
+        const ref = db.collection("rooms").doc(room.roomCode);
+        await ref.update({ status: "voting" });
+      };
+    }
+  } else {
+    // local version
+    screen.innerHTML = `
+      <h3>Discussion</h3>
+      <div class="word-box">
+        Give clues, ask questions, and figure out who is the imposter.
+      </div>
+      <button id="vote">Start Voting</button>
+    `;
+    document.getElementById("vote").onclick = () => showVoting(true);
+  }
+}
+
+/* ============================
+   VOTING (shared)
+============================ */
+let localVoteSelection = null;
+let onlineVoteSelection = null;
+
+function showVoting(isLocal) {
+  if (isLocal) {
+    const players = state.local.players;
+    let buttons = "";
+    players.forEach((p, i) => {
+      buttons += `<button class="vote-btn" data-idx="${i}">${p.name}</button>`;
+    });
+
+    screen.innerHTML = `
+      <h3>Vote for the Imposter</h3>
+      <div class="vote-grid">
+        ${buttons}
+      </div>
+      <button id="confirm">Confirm Vote</button>
+    `;
+
+    localVoteSelection = null;
+    document.querySelectorAll(".vote-btn").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll(".vote-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        localVoteSelection = parseInt(btn.dataset.idx, 10);
+      };
+    });
+
+    document.getElementById("confirm").onclick = () => {
+      if (localVoteSelection == null) { alert("Select someone."); return; }
+      resolveLocalVote();
+    };
+  } else {
+    const room = state.online.roomData;
+    const players = room.players || [];
+    let buttons = "";
+    players.forEach(p => {
+      buttons += `<button class="vote-btn" data-id="${p.id}">${p.name}${p.id === state.online.myPlayerId ? " (you)" : ""}</button>`;
+    });
+
+    const extraHost = state.online.isHost
+      ? `<button id="hostConfirm">Host: Confirm Vote</button>`
+      : `<p class="small center">Host will confirm the final vote.</p>`;
+
+    screen.innerHTML = `
+      <h3>Vote for the Imposter</h3>
+      <div class="vote-grid">
+        ${buttons}
+      </div>
+      ${extraHost}
+      <button onclick="showPlayModeSelect()" style="background:#ff4b6e;margin-top:6px;">Leave Room</button>
+    `;
+
+    onlineVoteSelection = null;
+    document.querySelectorAll(".vote-btn").forEach(btn => {
+      btn.onclick = () => {
+        document.querySelectorAll(".vote-btn").forEach(b => b.classList.remove("selected"));
+        btn.classList.add("selected");
+        onlineVoteSelection = btn.dataset.id;
+      };
+    });
+
+    if (state.online.isHost) {
+      document.getElementById("hostConfirm").onclick = async () => {
+        if (!onlineVoteSelection) {
+          alert("Host must select who was voted out.");
+          return;
+        }
+        const ref = db.collection("rooms").doc(room.roomCode);
+        await ref.update({
+          status: "results",
+          votedId: onlineVoteSelection
+        });
+      };
+    }
+  }
+}
+
+/* LOCAL: resolve vote and end */
+function resolveLocalVote() {
+  const votedIdx = localVoteSelection;
+  const impIdx = state.local.imposterIndex;
+  const votedPlayer = state.local.players[votedIdx].name;
+  const impName = state.local.players[impIdx].name;
+
+  if (votedIdx === impIdx) {
+    // imposter caught: give final guess locally
+    screen.innerHTML = `
+      <h3>Imposter Caught!</h3>
+      <p class="center small">${impName} was voted as the imposter.</p>
+      <p class="center small">They get one final guess at the word.</p>
+      <button id="guess">Imposter Guess</button>
+    `;
+    document.getElementById("guess").onclick = showLocalImposterGuess;
+  } else {
+    screen.innerHTML = `
+      <h3>Imposter Wins 😈</h3>
+      <p class="center small">You voted for ${votedPlayer}, but that was wrong.</p>
+      <p class="center small">Real Imposter: ${impName}</p>
+      <div class="word-box">
+        Secret word:<br>${state.local.secretWord}
+      </div>
+      <button onclick="showPlayModeSelect()">Play Again</button>
+    `;
+  }
+}
+
+function showLocalImposterGuess() {
+  const impName = state.local.players[state.local.imposterIndex].name;
   screen.innerHTML = `
     <h3>Imposter Final Guess</h3>
-    <p class="center small">${impName}, type your guess for the secret word.</p>
-    <input id="guess" type="text" placeholder="Enter the secret word">
+    <p class="center small">${impName}, type your guess:</p>
+    <input id="guessInput" type="text" placeholder="Secret word">
     <button id="submitGuess">Submit</button>
   `;
-
   document.getElementById("submitGuess").onclick = () => {
-    const guess = document.getElementById("guess").value.trim().toLowerCase();
-    const correct = guess === state.secretWord.toLowerCase();
-
-    if (correct && state.mode === "characters") {
-      const impIndex = state.imposterIndex - 1;
-      if (state.players[impIndex]) {
-        state.players[impIndex].score = (state.players[impIndex].score || 0) + 1;
-      }
-    }
-
+    const g = (document.getElementById("guessInput").value || "").trim().toLowerCase();
+    const correct = (g === state.local.secretWord.toLowerCase());
     if (correct) {
       screen.innerHTML = `
         <h3>Imposter Wins!</h3>
-        <p class="center small">${impName} guessed the word correctly.</p>
-        <div class="word-box">${state.secretWord}</div>
+        <p class="center small">${impName} guessed correctly.</p>
+        <div class="word-box">${state.local.secretWord}</div>
         <button onclick="showPlayModeSelect()">Play Again</button>
-
-        ${renderScoreboard()}
       `;
     } else {
       screen.innerHTML = `
         <h3>Crew Wins 🎉</h3>
-        <p class="center small">The Imposter failed to guess the word.</p>
-        <div class="word-box">${state.secretWord}</div>
+        <p class="center small">The imposter failed to guess the word.</p>
+        <div class="word-box">${state.local.secretWord}</div>
         <button onclick="showPlayModeSelect()">Play Again</button>
-
-        ${renderScoreboard()}
       `;
     }
   };
 }
 
-/* Start Game */
+/* ONLINE: results screen */
+function showOnlineResults(room) {
+  const players = room.players || [];
+  const imp = players.find(p => p.id === room.imposterId);
+  const impName = imp ? imp.name : "Imposter";
+  const voted = players.find(p => p.id === room.votedId);
+  const votedName = voted ? voted.name : "Unknown";
+
+  const correct = (room.votedId === room.imposterId);
+
+  screen.innerHTML = `
+    <h3>Results</h3>
+    <div class="word-box">
+      Secret word:<br><strong>${room.secretWord}</strong>
+    </div>
+    <p class="center small">Imposter: <strong>${impName}</strong></p>
+    <p class="center small">Voted out: <strong>${votedName}</strong></p>
+    <p class="center small" style="margin-top:6px;">
+      ${correct ? "Crew caught the imposter! 🎉" : "Imposter escaped 😈"}
+    </p>
+    ${state.online.isHost
+      ? '<button id="newRound">Start New Round (same room)</button>'
+      : '<p class="small center">Host can start a new round.</p>'}
+    <button onclick="showPlayModeSelect()" style="background:#ff4b6e;margin-top:6px;">Leave Room</button>
+  `;
+
+  if (state.online.isHost) {
+    document.getElementById("newRound").onclick = async () => {
+      const ref = db.collection("rooms").doc(room.roomCode);
+
+      const wordList =
+        room.mode === "characters" ? animeCharacters :
+        room.mode === "titles" ? animeTitles :
+        animeLocations;
+
+      const secretWord = randomItem(wordList);
+      const hint = room.hintEnabled ? getHintForWord(secretWord, room.mode) : null;
+      const playersList = room.players || [];
+      const imposter = randomItem(playersList);
+      await ref.update({
+        status: "roles",
+        secretWord,
+        imposterId: imposter.id,
+        imposterHint: hint
+      });
+    };
+  }
+}
+
+/* ============================
+   START APP
+============================ */
 showPlayModeSelect();
 </script>
-
-<script>
-  // Register service worker for PWA behavior
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js')
-        .catch(err => console.log('SW registration failed:', err));
-    });
-  }
-</script>
-
 </body>
 </html>
