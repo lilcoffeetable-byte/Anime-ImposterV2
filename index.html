@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Anime Imposter</title>
+  <meta name="theme-color" content="#0b0b1a">
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * { box-sizing: border-box; font-family: system-ui, sans-serif; }
+    body {
+      margin: 0; padding: 0; min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at top, #2b2b52, #0b0b1a);
+      color: #f9f9ff;
+    }
+    .container {
+      width: 100%; max-width: 500px; max-height: 95vh;
+      padding: 20px;
+      background: rgba(10,10,25,0.9); border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.1);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.6);
+      overflow-y: auto;
+    }
+    h1 { text-align:center; margin:0 0 10px; }
+    h3 { margin-top: 0; }
+    button {
+      width: 100%; padding: 10px; border-radius: 12px;
+      border: none; margin-top: 10px; font-weight:600;
+      background: linear-gradient(130deg,#ff7fd1,#7f7fff); cursor:pointer;
+      color:#0b0b1a;
+      transition: 0.15s;
+    }
+    button:hover { opacity:.92; transform:translateY(-1px); }
+    .mode-btn {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; margin: 6px 0;
+      width: 100%; padding: 10px; border-radius:10px;
+      cursor:pointer;
+      transition:0.15s;
+    }
+    .mode-btn.selected { background: rgba(255,127,209,0.3); border-color:#ff7fd1; }
+    input[type="number"], input[type="text"] {
+      width: 100%; padding: 8px; border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.1); color: #fff;
+      margin-top: 8px;
+    }
+    input[type="checkbox"] { transform: scale(1.3); margin-right: 8px; }
+    label { font-size: 0.95rem; }
+    .word-box {
+      text-align:center; background:rgba(255,255,255,0.08);
+      padding:12px; border-radius:10px; margin-top:10px;
+    }
+    .vote-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(80px,1fr)); gap:10px; }
+    .vote-btn {
+      padding:10px; border-radius:10px; background:rgba(255,255,255,0.1);
+      border:1px solid rgba(255,255,255,0.2); cursor:pointer; color:#fff;
+      transition:0.1s;
+    }
+    .vote-btn.selected { background:rgba(255,127,209,0.3); border-color:#ff7fd1; }
+    .center { text-align:center; }
+    .small { font-size: 0.85rem; opacity: 0.85; }
+    .name-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <h1>Anime Imposter</h1>
+  <div id="screen"></div>
+</div>
+
+<script>
+/* ============================
+   WORD LISTS
+============================ */
+const animeCharacters = [
+  "Naruto","Sasuke","Sakura","Kakashi",
+  "Luffy","Zoro","Nami",
+  "Goku","Vegeta",
+  "Tanjiro","Nezuko","Inosuke",
+  "Gojo","Megumi",
+  "Ichigo","Rukia",
+  "Levi","Mikasa",
+  "Kaneki",
+  "Gon","Killua","Hisoka",
+  "Light","L",
+  "Saitama",
+  "Meliodas","Elizabeth","Ban","Diane","King","Gowther","Merlin","Escanor",
+  "Mob","Reigen","Ritsu","Teruki",
+  "Genos","Tatsumaki",
+  "Yuji","Nobara",
+  "Denji","Power","Aki","Makima",
+  "Jotaro","Dio","Joseph","Giorno","Jonathan"
+];
+
+const animeTitles = [
+  "Naruto","Bleach","One Piece","Dragon Ball","Demon Slayer","Jujutsu Kaisen",
+  "Attack on Titan","Death Note","Fullmetal Alchemist","Tokyo Ghoul","Hunter x Hunter",
+  "My Hero Academia","Black Clover","Chainsaw Man","Sword Art Online",
+  "Seven Deadly Sins",
+  "Mob Psycho 100","One Punch Man","JoJo's Bizarre Adventure"
+];
+
+const animeLocations = [
+  "Konoha","Soul Society","Grand Line","Namek","Wall Maria","UA High",
+  "Demon Slayer Corps HQ","Hidden Sand Village","Greed Island",
+  "Fairy Tail Guild","Marineford","Infinity Castle",
+  "Liones","Boar Hat","Camelot",
+  "Jujutsu High","Shibuya",
+  "Public Safety HQ",
+  "Morioh","Dio's Mansion"
+];
+
+/* ============================
+   CHARACTER HINT POOLS
+============================ */
+const characterHintPools = {
+  naruto: [
+    "blonde","spiky","whiskers","orange","jacket","sandals","scarf","grin","loud","upbeat",
+    "stubborn","ramen","short","bright","messy","leaf","teen","sunny","hyper","bold"
+  ],
+  sasuke: [
+    "black","sleek","pale","dark","robe","collar","calm","cold","quiet","brooding",
+    "sharp","slim","blue","distant","focused","tidy","moody","cool","lone","refined"
+  ],
+  sakura: [
+    "pink","short","gloves","headband","neat","bright","caring","strong","medic","tidy",
+    "serious","brave","focused","polite","clean","skirt","soft","alert","loyal","calm"
+  ],
+  kakashi: [
+    "silver","mask","covered","calm","lean","tall","lone","sleepy","vest","books",
+    "relaxed","scarf","chill","quiet","composed","blue","soft","mature","casual","mellow"
+  ],
+  luffy: [
+    "black","vest","sandals","straw","grin","carefree","loud","hungry","slim","tan",
+    "open","wild","curious","sunny","shirtless","shorts","simple","bold","goofy","cheerful"
+  ],
+  zoro: [
+    "green","bandana","scar","bulky","boots","coat","serious","strict","quiet","strong",
+    "stern","bold","tan","belt","gloves","stubborn","focused","tough","rough","intense"
+  ],
+  nami: [
+    "orange","slim","skirt","bracelets","clever","stylish","witty","sharp","calm","neat",
+    "green","bikini","cute","bright","confident","sandals","tidy","sweet","vibrant","sly"
+  ],
+  goku: [
+    "black","spiky","orange","gi","boots","cheerful","friendly","upbeat","naive","lean",
+    "tall","bright","lively","kind","simple","casual","playful","warm","pure","bold"
+  ],
+  vegeta: [
+    "black","sharp","widow","armor","gloves","boots","proud","intense","angry","short",
+    "compact","royal","tense","strict","stern","blue","serious","elite","grit","tough"
+  ],
+  tanjiro: [
+    "black","red","scar","haori","green","checkered","polite","kind","gentle","soft",
+    "caring","neat","honest","calm","tidy","scarf","bright","humble","pure","warm"
+  ],
+  nezuko: [
+    "black","pink","ribbon","bamboo","quiet","shy","cute","soft","kind","sweet",
+    "long","gentle","pale","small","feminine","calm","demure","warm","silent","delicate"
+  ],
+  inosuke: [
+    "black","messy","boar","wild","loud","chaotic","shirtless","rough","lean","sharp",
+    "reckless","bold","fierce","primal","tough","crazy","fast","raw","brash","gritty"
+  ],
+  gojo: [
+    "white","tall","slim","cool","blindfold","shades","stylish","playful","smug","calm",
+    "soft","scarf","long","sleek","modern","blue","trendy","relaxed","smooth","casual"
+  ],
+  megumi: [
+    "black","spiky","uniform","quiet","reserved","serious","slim","pale","calm","loyal",
+    "neat","tidy","soft","lowkey","focused","polite","cool","steady","muted","plain"
+  ],
+  ichigo: [
+    "orange","tall","black","robe","stubborn","rough","sharp","casual","serious","lean",
+    "pale","coat","bold","loud","tough","scar","gritty","moody","direct","edgy"
+  ],
+  rukia: [
+    "black","cute","small","uniform","serious","strict","calm","neat","pale","short",
+    "tidy","simple","clean","cold","polite","firm","pure","crisp","chill","classic"
+  ],
+  levi: [
+    "black","short","crisp","clean","scarf","boots","cape","neat","stern","harsh",
+    "tidy","compact","sharp","cold","lean","strict","silent","minimal","direct","rigid"
+  ],
+  mikasa: [
+    "black","scarf","calm","loyal","stoic","soft","slim","strong","neat","folded",
+    "simple","quiet","alert","firm","tidy","pale","steady","bold","stable","warm"
+  ],
+  kaneki: [
+    "black","white","mask","bookish","shy","quiet","pale","slim","soft","gentle",
+    "dark","neat","anxious","calm","introvert","simple","hoodie","thin","lonely","muted"
+  ],
+  gon: [
+    "black","green","shorts","boots","curious","upbeat","sunny","pure","bright","cheerful",
+    "slim","loud","playful","loyal","eager","brave","bold","lively","fresh","spirited"
+  ],
+  killua: [
+    "white","blue","shirt","calm","cool","pale","slim","soft","clever","sweet",
+    "quiet","hoodie","smooth","chill","muted","sharp","quick","casual","light","soft"
+  ],
+  hisoka: [
+    "red","suit","makeup","grin","smug","sly","odd","playful","tall","slim",
+    "sharp","jester","flashy","cold","eerie","bright","lean","pride","showy","chaotic"
+  ],
+  light: [
+    "brown","neat","shirt","tie","calm","smart","clean","tidy","polite","slim",
+    "quiet","serious","coat","pale","simple","sharp","smooth","organized","formal","focused"
+  ],
+  l: [
+    "black","messy","jeans","pale","quiet","slouch","sweets","odd","calm","soft",
+    "dark","introvert","blank","loose","bare","sleepy","empty","weird","plain","gentle"
+  ],
+  saitama: [
+    "bald","cape","yellow","plain","calm","simple","blank","straight","easygoing","soft",
+    "casual","smooth","clean","round","neat","warm","mellow","steady","quiet","dull"
+  ],
+  meliodas: [
+    "blonde","short","sword","vest","casual","grin","cheerful","captain","tavern","relaxed",
+    "youthful","broken","dragon","playful","smirk","soft","messy","calm","stubborn","bar"
+  ],
+  elizabeth: [
+    "silver","blue","eyes","skirt","uniform","kind","gentle","princess","polite","soft",
+    "tearful","caring","calm","long","hair","earring","graceful","white","quiet","sweet"
+  ],
+  ban: [
+    "silver","tall","scar","red","jacket","open","grin","cocky","lean","piercing",
+    "shirtless","brash","smirk","boots","bold","rough","immortal","bar","blue","wild"
+  ],
+  diane: [
+    "giant","tall","braid","brown","ponytail","earthy","kind","orange","shorts","boots",
+    "hammer","smile","gentle","strong","cheerful","tank","green","cute","big","playful"
+  ],
+  king: [
+    "short","round","cloak","pillow","hover","float","hoodie","freckles","soft","shy",
+    "wings","green","spear","cape","quiet","childlike","serious","royal","sad","gentle"
+  ],
+  gowther: [
+    "pink","glasses","book","calm","blank","doll","slim","soft","quiet","pale",
+    "sweater","odd","literal","calculated","shirt","short","reserved","gentle","curious","gloves"
+  ],
+  merlin: [
+    "purple","cloak","witch","staff","tall","curvy","mysterious","smirk","boots","high",
+    "sorceress","cool","confident","calm","long","elegant","sleeves","gloves","wise","charm"
+  ],
+  escanor: [
+    "mustache","sun","tall","massive","muscles","bar","apron","glasses","meek","timid",
+    "pride","noon","lion","strong","coat","shirt","gentle","noble","quiet","radiant"
+  ],
+  mob: [
+    "bowlcut","plain","uniform","black","short","slouch","blank","quiet","shy","soft",
+    "psychic","tremble","student","modest","calm","reserved","nervous","gentle","pale","simple"
+  ],
+  reigen: [
+    "blonde","suit","tie","office","salesman","smirk","talkative","fake","mentor","loose",
+    "cunning","charming","sleeves","hands","pose","cheap","calm","confident","boss","dramatic"
+  ],
+  ritsu: [
+    "brown","neat","uniform","younger","serious","proper","calm","reserved","tidy","student",
+    "anxious","envy","quiet","sharp","hair","pale","soft","careful","polite","orderly"
+  ],
+  teruki: [
+    "blonde","pompadour","uniform","flashy","proud","ego","scarf","jacket","school","smirk",
+    "stylish","cocky","hair","psychic","student","clean","sharp","dramatic","cheerful","cool"
+  ],
+  genos: [
+    "blonde","cyborg","arms","metal","eyes","serious","disciple","coat","black","jacket",
+    "lean","young","glow","wires","gloves","stern","focused","cool","burn","combat"
+  ],
+  tatsumaki: [
+    "green","short","dress","curly","hair","floating","tsundere","angry","cape","boots",
+    "petite","storm","psychic","proud","sharp","cold","childish","elite","serious","hover"
+  ],
+  yuji: [
+    "pink","hair","uniform","track","sneakers","hood","cheerful","simple","strong","compassionate",
+    "goofy","brave","red","scarf","short","warm","student","energetic","loyal","impulsive"
+  ],
+  nobara: [
+    "orange","bob","uniform","skirt","hammer","nails","confident","bold","sharp","sarcastic",
+    "fashion","boots","short","serious","proud","city","tough","brash","stylish","cool"
+  ],
+  denji: [
+    "blonde","messy","tie","shirt","chainsaw","grin","simple","poor","sloppy","reckless",
+    "teen","crude","loud","sleepy","jacket","loose","casual","hungry","wild","awkward"
+  ],
+  power: [
+    "horns","blonde","red","shirt","jacket","feral","selfish","loud","blood","cat",
+    "unhinged","sharp","messy","tie","wild","chaotic","greedy","rude","funny","gremlin"
+  ],
+  aki: [
+    "black","ponytail","suit","tie","serious","calm","smoker","cold","orderly","sword",
+    "gloves","tall","quiet","apartment","stern","neat","composed","distant","tired","glum"
+  ],
+  makima: [
+    "red","braid","eyes","spiral","uniform","tie","calm","smile","cold","mysterious",
+    "boots","coat","command","office","polite","soft","distant","control","quiet","chill"
+  ],
+  jotaro: [
+    "hat","coat","chain","tall","stoic","serious","uniform","cap","hands","pockets",
+    "cool","marine","white","black","silent","sharp","rough","aura","stand","coatflap"
+  ],
+  dio: [
+    "blonde","vampire","smirk","evil","arrogant","jacket","heart","ornate","boots","jewelry",
+    "pose","flamboyant","cruel","gold","scarf","sharp","stylish","cocky","menacing","dramatic"
+  ],
+  joseph: [
+    "scarf","hat","young","teal","muscular","clever","trick","loud","sarcastic","cheerful",
+    "ripple","bandana","gloves","coat","older","beard","purple","prank","energetic","rude"
+  ],
+  giorno: [
+    "blonde","curl","suit","pink","ladybug","calm","dreamy","mafia","brooch","elegant",
+    "stylish","slim","italy","buttons","composed","gentle","quiet","gold","refined","pose"
+  ],
+  jonathan: [
+    "gentleman","blue","jacket","muscular","proper","honor","tie","clean","short","coat",
+    "caring","serious","noble","polite","kind","classic","victorian","british","orderly","heroic"
+  ]
+};
+
+/* ============================
+   TITLE HINT POOLS
+============================ */
+const titleHintPools = {
+  "naruto": [
+    "village","forest","ninja","mission","trees","mountains","rural","school","team","war",
+    "clans","modern","roads","market","ramen","bands","snow","training","bridge","adventure"
+  ],
+  "bleach": [
+    "afterlife","swords","robes","city","school","modern","spirit","gates","rooftops","alleys",
+    "court","old","seireitei","river","bridge","walls","night","cemetery","hollow","soul"
+  ],
+  "one piece": [
+    "sea","ships","islands","pirates","harbor","tavern","sand","tropical","maps","sky",
+    "storm","compass","grand","sunny","reef","port","dock","treasure","crew","adventure"
+  ],
+  "dragon ball": [
+    "mountains","fields","training","rural","capsule","city","tournament","dojo","crater","island",
+    "forest","desert","space","future","time","tower","clouds","lake","village","adventure"
+  ],
+  "demon slayer": [
+    "forest","night","lanterns","edo","taisho","snow","mountain","train","village","temple",
+    "road","inn","river","castle","torch","fog","bridge","town","kimono","lanes"
+  ],
+  "jujutsu kaisen": [
+    "school","campus","city","modern","subway","rooftops","alleys","shrine","tunnel","dorm",
+    "stadium","bridge","streets","train","crowds","district","shadows","classroom","festival","gate"
+  ],
+  "attack on titan": [
+    "walls","district","fields","castle","forest","ruins","snow","harbor","underground","barracks",
+    "cannons","city","stone","river","cliff","tower","battlements","village","breeze","war"
+  ],
+  "death note": [
+    "city","apartment","school","desk","notebook","night","rain","neon","office","college",
+    "subway","cameras","streets","crowds","tower","modern","hospital","police","river","bridge"
+  ],
+  "fullmetal alchemist": [
+    "europe","military","train","desert","city","steam","war","library","church","laboratory",
+    "village","winter","factory","castle","cathedral","market","barracks","tunnel","gate","tracks"
+  ],
+  "tokyo ghoul": [
+    "city","alleys","rain","coffee","basement","sewers","university","streets","night","tunnel",
+    "bridge","market","district","cafes","crowds","modern","tower","park","subway","warehouse"
+  ],
+  "hunter x hunter": [
+    "forest","island","exam","tower","arena","desert","city","market","dock","ship",
+    "mountain","caves","tournament","castle","palace","river","swamp","train","village","adventure"
+  ],
+  "my hero academia": [
+    "city","school","campus","dorms","stadium","festival","modern","rooftops","gym","classroom",
+    "streets","training","hospital","mall","subway","dormitory","park","factory","arena","bridge"
+  ],
+  "black clover": [
+    "kingdom","clover","church","village","castle","fields","tower","capital","forest","library",
+    "barracks","dungeon","snow","town","churchyard","farm","lake","market","path","adventure"
+  ],
+  "chainsaw man": [
+    "city","office","warehouse","streets","apartment","rooftops","train","alley","tunnel","factory",
+    "modern","rain","subway","building","shop","river","night","crowds","station","parking"
+  ],
+  "sword art online": [
+    "virtual","castle","floors","fields","dungeon","forest","town","village","sky","ruins",
+    "desert","snow","labyrinth","island","swordland","caves","tower","lake","market","adventure"
+  ],
+  "seven deadly sins": [
+    "kingdom","medieval","castle","village","tavern","forest","plains","knights","war","roads",
+    "church","fields","capital","bridge","armor","magic","rural","adventure","demons","britannia"
+  ],
+  "mob psycho 100": [
+    "city","suburb","school","club","office","modern","apartment","streets","rooftops","alley",
+    "afterhours","spirit","exorcism","shop","road","training","festival","arcade","bridge","adolescence"
+  ],
+  "one punch man": [
+    "city","suburb","apartment","training","heroes","association","modern","streets","monster","ruins",
+    "stadium","lab","bunker","concrete","harbor","bridge","alley","tower","office","disaster"
+  ],
+  "jojo's bizarre adventure": [
+    "city","mansion","train","harbor","egypt","italy","town","streets","alley","rooftops",
+    "castle","desert","coast","bizarre","adventure","retro","80s","90s","stylish","journey"
+  ]
+};
+
+/* ============================
+   LOCATION HINT POOLS
+============================ */
+const locationHintPools = {
+  "konoha": [
+    "village","forest","trees","walls","mountains","river","rural","gate","rooftops","streets",
+    "training","leaf","market","cliff","hidden","school","fields","homes","ramen","paths"
+  ],
+  "soul society": [
+    "afterlife","walls","court","gates","stone","old","district","rooftops","barracks","courtyard",
+    "river","bridge","fields","temple","gate","lanterns","seireitei","paths","towers","gardens"
+  ],
+  "grand line": [
+    "sea","islands","storms","currents","ships","reef","fog","tropical","clouds","harbor",
+    "waves","wind","compass","danger","mists","routes","sky","sun","coast","tides"
+  ],
+  "namek": [
+    "green","fields","lakes","islands","sky","pillars","village","orbs","rural","mountains",
+    "river","trees","flat","quiet","alien","cliffs","ponds","plain","blue","horizon"
+  ],
+  "wall maria": [
+    "walls","stone","fields","farms","village","gate","district","roads","river","towers",
+    "barracks","fields","houses","horses","battlements","forest","cliff","plains","paths","border"
+  ],
+  "ua high": [
+    "school","campus","dorms","gym","stadium","city","modern","gate","classroom","rooftops",
+    "training","arena","track","hallway","labs","dormitory","courtyard","field","stairs","arena"
+  ],
+  "demon slayer corps hq": [
+    "estate","mansion","forest","lanterns","paths","garden","courtyard","edo","pines","pond",
+    "building","tiles","gate","hall","tatami","trees","meetings","stone","steps","quiet"
+  ],
+  "hidden sand village": [
+    "desert","sand","wind","walls","dunes","gate","towers","stone","dust","ramparts",
+    "sun","market","streets","dry","oasis","tent","storm","plaza","heat","rock"
+  ],
+  "greed island": [
+    "island","forest","plains","mountains","village","game","river","fields","castle","town",
+    "bridge","caves","cliffs","beach","harbor","paths","ruins","camp","trees","arena"
+  ],
+  "fairy tail guild": [
+    "guild","hall","bar","tables","city","stone","banner","jobs","stairs","fireplace",
+    "counter","crowded","wood","stage","doors","windows","bridge","river","square","rooftops"
+  ],
+  "marineford": [
+    "harbor","fortress","sea","war","ice","ships","plaza","platform","walls","towers",
+    "stairs","coast","port","waves","bridge","town","flag","navy","dock","bay"
+  ],
+  "infinity castle": [
+    "castle","interior","endless","lanterns","wood","floating","hall","stairs","dark","maze",
+    "doors","ceiling","space","shifting","quiet","echo","void","dim","rooms","infinite"
+  ],
+  "liones": [
+    "castle","kingdom","walls","town","plaza","flags","stone","fountain","church","streets",
+    "market","square","gate","court","throne","bridge","guards","village","castleyard","banners"
+  ],
+  "boar hat": [
+    "tavern","bar","ale","tables","hill","road","tiny","wood","sign","kegs",
+    "stools","mugs","wagon","mobile","counter","stairs","cozy","remote","inn","rooftop"
+  ],
+  "camelot": [
+    "castle","spires","knights","walls","towers","stone","flag","kingdom","hall","throne",
+    "bridge","courtyard","garden","city","tournament","battlements","plaza","gate","square","old"
+  ],
+  "jujutsu high": [
+    "campus","school","dorms","gates","courtyard","training","dojo","field","hall","classroom",
+    "rooftops","shrine","forest","paths","modern","stairs","dormitory","yard","buildings","quiet"
+  ],
+  "shibuya": [
+    "city","station","crossing","crowds","lights","underground","subway","tunnel","streets","rooftops",
+    "mall","alleys","modern","plaza","bridge","signs","shops","night","stairs","chaos"
+  ],
+  "public safety hq": [
+    "office","city","modern","floors","elevator","desks","meeting","hall","windows","tower",
+    "corridor","file","lights","badge","crowds","lobby","stairs","rooftops","uniform","bureau"
+  ],
+  "morioh": [
+    "town","coast","suburb","streets","alleys","harbor","residential","school","cafe","park",
+    "houses","hills","signs","shops","quiet","roads","plaza","tunnel","station","neighborhood"
+  ],
+  "dio's mansion": [
+    "mansion","gothic","stairs","hall","pillars","windows","dark","chandelier","garden","gate",
+    "balcony","carpet","porch","rooms","statue","grand","curtains","courtyard","stone","ominous"
+  ]
+};
+
+/* ============================
+   HINT GENERATOR
+============================ */
+function getHint(word, mode) {
+  const w = word.toLowerCase();
+
+  if (mode === "characters") {
+    const list = characterHintPools[w];
+    if (list && list.length) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+    const fallback = [
+      "hair","eyes","coat","mask","scarf",
+      "uniform","jacket","hoodie","boots","gloves"
+    ];
+    return fallback[Math.floor(Math.random() * fallback.length)];
+  }
+
+  if (mode === "titles") {
+    const list = titleHintPools[w];
+    if (list && list.length) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+    const fallback = ["series","city","sea","space","school","forest","village","modern","castle","walls"];
+    return fallback[Math.floor(Math.random() * fallback.length)];
+  }
+
+  if (mode === "locations") {
+    const list = locationHintPools[w];
+    if (list && list.length) {
+      return list[Math.floor(Math.random() * list.length)];
+    }
+    const fallback = ["place","village","city","sea","walls","castle","forest","fields","train","island"];
+    return fallback[Math.floor(Math.random() * fallback.length)];
+  }
+
+  return "subtle";
+}
+
+/* ============================
+   GAME STATE
+============================ */
+const screen = document.getElementById("screen");
+
+const state = {
+  mode: "",
+  hintEnabled: false,
+  totalPlayers: 0,
+  currentPlayer: 1,
+  imposterIndex: 1,
+  secretWord: "",
+  wordList: [],
+  vote: null,
+  imposterHint: null,
+  players: []
+};
+
+/* ============================
+   SCOREBOARD
+============================ */
+function renderScoreboard() {
+  if (!state.players || state.players.length === 0) return "";
+  const rows = state.players
+    .map((p) => `${p.name}: ${p.score}`)
+    .join("<br>");
+  return `
+    <div class="word-box">
+      <strong>Scores</strong><br>
+      ${rows}
+    </div>
+  `;
+}
+
+/* ============================
+   MODE SELECT
+============================ */
+function showModeSelect() {
+  screen.innerHTML = `
+    <h3>Select Gamemode</h3>
+    <button class="mode-btn" data-mode="characters">Anime Characters</button>
+    <button class="mode-btn" data-mode="titles">Anime Titles</button>
+    <button class="mode-btn" data-mode="locations">Anime Locations</button>
+
+    <h3>Options</h3>
+    <label>
+      <input type="checkbox" id="hintToggle">
+      Enable Imposter Hints
+    </label>
+    <div class="small">Hints are a single vague word related to the answer (setting, look, or vibe).</div>
+
+    <button id="continue">Continue</button>
+
+    ${renderScoreboard()}
+  `;
+
+  let selected = null;
+
+  document.querySelectorAll(".mode-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      selected = btn.dataset.mode;
+    };
+  });
+
+  document.getElementById("continue").onclick = () => {
+    if (!selected) {
+      alert("Choose a gamemode.");
+      return;
+    }
+
+    state.mode = selected;
+    state.hintEnabled = document.getElementById("hintToggle").checked;
+
+    state.wordList =
+      selected === "characters" ? animeCharacters :
+      selected === "titles" ? animeTitles :
+      animeLocations;
+
+    showPlayerSetup();
+  };
+}
+
+/* ============================
+   PLAYER COUNT
+============================ */
+function showPlayerSetup() {
+  screen.innerHTML = `
+    <h3>How many players?</h3>
+    <input id="players" type="number" min="3" max="12" value="${state.totalPlayers || 4}">
+    <button id="next">Next: Names</button>
+
+    ${renderScoreboard()}
+  `;
+
+  document.getElementById("next").onclick = () => {
+    const count = parseInt(document.getElementById("players").value, 10);
+    if (count < 3 || count > 12) {
+      alert("Choose 3–12 players.");
+      return;
+    }
+
+    state.totalPlayers = count;
+    showNameEntry();
+  };
+}
+
+/* ============================
+   NAME ENTRY
+============================ */
+function showNameEntry() {
+  let inputsHtml = "";
+  for (let i = 0; i < state.totalPlayers; i++) {
+    const existing = state.players[i]?.name || "";
+    inputsHtml += `
+      <div>
+        <input type="text" id="name_${i}" placeholder="Player ${i+1} name" value="${existing}">
+      </div>
+    `;
+  }
+
+  screen.innerHTML = `
+    <h3>Enter Player Names</h3>
+    <div class="name-list">
+      ${inputsHtml}
+    </div>
+    <button id="start">Start Round</button>
+
+    ${renderScoreboard()}
+  `;
+
+  document.getElementById("start").onclick = () => {
+    const newPlayers = [];
+    for (let i = 0; i < state.totalPlayers; i++) {
+      const input = document.getElementById(`name_${i}`);
+      let name = (input.value || "").trim();
+      if (!name) name = `Player ${i+1}`;
+
+      const old = state.players[i];
+      const oldScore = old ? old.score : 0;
+      newPlayers.push({ name, score: oldScore || 0 });
+    }
+    state.players = newPlayers;
+
+    state.currentPlayer = 1;
+    state.imposterIndex = 1 + Math.floor(Math.random() * state.totalPlayers);
+    state.secretWord = state.wordList[Math.floor(Math.random() * state.wordList.length)];
+    state.imposterHint = state.hintEnabled ? getHint(state.secretWord, state.mode) : null;
+    state.vote = null;
+
+    showPassDevice();
+  };
+}
+
+/* ============================
+   PASS DEVICE
+============================ */
+function showPassDevice() {
+  const name = state.players[state.currentPlayer - 1]?.name || `Player ${state.currentPlayer}`;
+  screen.innerHTML = `
+    <div class="center">
+      <p>Pass to <strong>${name}</strong></p>
+      <button id="reveal">I am ${name}</button>
+    </div>
+  `;
+  document.getElementById("reveal").onclick = showRole;
+}
+
+/* ============================
+   ROLE SCREEN
+============================ */
+function showRole() {
+  const idx = state.currentPlayer - 1;
+  const playerName = state.players[idx]?.name || `Player ${state.currentPlayer}`;
+  const isImposter = state.currentPlayer === state.imposterIndex;
+
+  let hintHtml = "";
+  if (isImposter && state.hintEnabled && state.imposterHint) {
+    hintHtml = `
+      <div class="word-box">
+        <strong>Hint:</strong><br>
+        ${state.imposterHint}
+      </div>
+      <div class="small center">One vague word about the answer (like sea, walls, trees, train, modern, edo).</div>
+    `;
+  }
+
+  screen.innerHTML = `
+    <div class="center">
+      <h3>${playerName}</h3>
+
+      ${
+        isImposter
+          ? `<p style="color:#ff7fd1"><strong>You are the Imposter 😈</strong></p>`
+          : `<div class="word-box"><strong>Word:</strong> ${state.secretWord}</div>`
+      }
+
+      ${hintHtml}
+
+      <button id="done">Done</button>
+    </div>
+  `;
+
+  document.getElementById("done").onclick = () => {
+    if (state.currentPlayer < state.totalPlayers) {
+      state.currentPlayer++;
+      showPassDevice();
+    } else {
+      showDiscussion();
+    }
+  };
+}
+
+/* ============================
+   DISCUSSION
+============================ */
+function showDiscussion() {
+  screen.innerHTML = `
+    <h3>Discussion Phase</h3>
+    <p class="center small">
+      Give clues, ask questions, and figure out who doesn't know the word.
+    </p>
+    <button id="vote">Start Voting</button>
+
+    ${renderScoreboard()}
+  `;
+  document.getElementById("vote").onclick = showVoting;
+}
+
+/* ============================
+   VOTING
+============================ */
+function showVoting() {
+  let options = "";
+  for (let i = 1; i <= state.totalPlayers; i++) {
+    const name = state.players[i-1]?.name || `Player ${i}`;
+    options += `<button class="vote-btn" data-player="${i}">${name}</button>`;
+  }
+
+  screen.innerHTML = `
+    <h3>Vote for the Imposter</h3>
+    <div class="vote-grid">${options}</div>
+    <button id="confirm">Confirm Vote</button>
+  `;
+
+  document.querySelectorAll(".vote-btn").forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll(".vote-btn").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      state.vote = parseInt(btn.dataset.player, 10);
+    };
+  });
+
+  document.getElementById("confirm").onclick = resolveVote;
+}
+
+/* ============================
+   VOTE RESULT
+============================ */
+function resolveVote() {
+  if (!state.vote) {
+    alert("Select someone!");
+    return;
+  }
+
+  const impName = state.players[state.imposterIndex - 1]?.name || `Player ${state.imposterIndex}`;
+
+  if (state.vote === state.imposterIndex) {
+    screen.innerHTML = `
+      <h3>Imposter Caught!</h3>
+      <p class="center small">${impName} was voted as the Imposter.</p>
+      <p class="center small">They get one final guess at the word.</p>
+      <button id="guess">Imposter Guess</button>
+
+      ${renderScoreboard()}
+    `;
+    document.getElementById("guess").onclick = showImposterGuess;
+  } else {
+    const votedName = state.players[state.vote - 1]?.name || `Player ${state.vote}`;
+    screen.innerHTML = `
+      <h3>Imposter Wins 😈</h3>
+      <p class="center small">You voted ${votedName}, but they were innocent.</p>
+      <p class="center small">Real Imposter: ${impName}</p>
+      <div class="word-box">Word: ${state.secretWord}</div>
+      <button onclick="showModeSelect()">Play Again</button>
+
+      ${renderScoreboard()}
+    `;
+  }
+}
+
+/* ============================
+   IMPOSTER FINAL GUESS
+============================ */
+function showImposterGuess() {
+  const impName = state.players[state.imposterIndex - 1]?.name || `Player ${state.imposterIndex}`;
+
+  screen.innerHTML = `
+    <h3>Imposter Final Guess</h3>
+    <p class="center small">${impName}, type your guess for the secret word.</p>
+    <input id="guess" type="text" placeholder="Enter the secret word">
+    <button id="submitGuess">Submit</button>
+  `;
+
+  document.getElementById("submitGuess").onclick = () => {
+    const guess = document.getElementById("guess").value.trim().toLowerCase();
+    const correct = guess === state.secretWord.toLowerCase();
+
+    if (correct && state.mode === "characters") {
+      const impIndex = state.imposterIndex - 1;
+      if (state.players[impIndex]) {
+        state.players[impIndex].score = (state.players[impIndex].score || 0) + 1;
+      }
+    }
+
+    if (correct) {
+      screen.innerHTML = `
+        <h3>Imposter Wins!</h3>
+        <p class="center small">${impName} guessed the word correctly.</p>
+        <div class="word-box">${state.secretWord}</div>
+        <button onclick="showModeSelect()">Play Again</button>
+
+        ${renderScoreboard()}
+      `;
+    } else {
+      screen.innerHTML = `
+        <h3>Crew Wins 🎉</h3>
+        <p class="center small">The Imposter failed to guess the word.</p>
+        <div class="word-box">${state.secretWord}</div>
+        <button onclick="showModeSelect()">Play Again</button>
+
+        ${renderScoreboard()}
+      `;
+    }
+  };
+}
+
+/* Start Game */
+showModeSelect();
+</script>
+
+<script>
+  // Register service worker for PWA behavior
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js')
+        .catch(err => console.log('SW registration failed:', err));
+    });
+  }
+</script>
+
+</body>
+</html>
