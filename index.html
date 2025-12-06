@@ -834,10 +834,16 @@
     document.querySelector(".choice-btn[data-imposters='1']").classList.add("selected");
 
 
-    document.querySelectorAll(".choice-btn").forEach(btn => {
+    document.querySelectorAll(".choice-btn[data-mode], .choice-btn[data-imposters]").forEach(btn => {
       btn.onclick = () => {
         // Handle game mode selection
         if (btn.dataset.mode) {
+            // Check player count for imposter modes
+            if (btn.dataset.mode !== 'hangman' && playerCount < imposterMin) {
+                alert(`Imposter modes require at least ${imposterMin} players.`);
+                return;
+            }
+            
             document.querySelectorAll(".choice-btn[data-mode]").forEach(b => b.classList.remove("selected"));
             btn.classList.add("selected");
             chosenMode = btn.dataset.mode;
@@ -845,7 +851,9 @@
         }
         // Handle imposter count selection
         if (btn.dataset.imposters) {
-            if (playerCount < imposterMin) return; // Block if not enough players for Imposter mode
+            // Block if not enough players for Imposter mode
+            if (chosenMode === 'hangman' || playerCount < imposterMin) return; 
+
             if (btn.dataset.imposters === "2" && playerCount < doubleImposterMin) {
                 alert(`You need at least ${doubleImposterMin} players for Double Imposter mode.`);
                 return;
@@ -856,7 +864,9 @@
         }
       };
     });
-
+    
+    // --- ATTACH EVENT LISTENERS FOR START/CLOSE BUTTONS ---
+    
     document.getElementById("closeRoom").onclick = () => onlineLeaveRoom(room.roomCode, state.online.myPlayerId, true);
 
     document.getElementById("startRound").onclick = async () => {
@@ -875,6 +885,7 @@
               return;
           }
           const hintOn = document.getElementById("hintToggle").checked;
+          // IMPORTANT: Re-read numImposters from the selected button just in case
           const numImposters = parseInt(document.querySelector(".choice-btn[data-imposters].selected")?.dataset.imposters || '1', 10);
 
           if (numImposters === 2 && players.length < doubleImposterMin) {
